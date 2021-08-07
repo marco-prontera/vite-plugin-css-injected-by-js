@@ -40,7 +40,20 @@ export default function cssInjectedByJsPlugin(): Plugin {
 
                     if (chunk.type === 'chunk' && chunk.fileName.includes('.js')) {
 
-                        chunk.code += `try {var bundleStyle = document.createElement('style');bundleStyle.innerText = \`${styleCode}\`;document.head.appendChild(bundleStyle);} catch (e) {console.log(e, "CSSInjectedByJS: Can't add dynamic style to page.");}`;
+                        function addCSSStyleToPage(styleCode: string) {
+                            try {
+                                var elementStyle = document.createElement('style');
+                                elementStyle.innerText = styleCode;
+                                document.head.appendChild(elementStyle);
+                            } catch (e) {
+                                console.error(e,'vite-plugin-css-injected-by-js: can\'t add the style.');
+                            }
+                        }
+
+                        //IIFE http://benalman.com/news/2010/11/immediately-invoked-function-expression/
+                        chunk.code += `(${addCSSStyleToPage.toString()})(\`${styleCode}\`)`;
+
+                        break;
 
                     }
 
