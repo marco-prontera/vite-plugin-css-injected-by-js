@@ -3,7 +3,10 @@
   "compilerOptions": {
     "declaration": true,
     "esModuleInterop": true,
-    "lib": ["es2018"],
+    "lib": [
+      "es2018",
+      "dom"
+    ],
     "module": "commonjs",
     "moduleResolution": "node",
     "noUnusedLocals": true,
