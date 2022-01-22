@@ -5,7 +5,7 @@ import { IndexHtmlTransformContext, IndexHtmlTransformResult, Plugin } from 'vit
  *
  * @return {Plugin}
  */
-export default function cssInjectedByJsPlugin(): Plugin {
+export default function cssInjectedByJsPlugin({topExecutionPriority} = { topExecutionPriority: true }): Plugin {
 
     return {
         apply: 'build',
@@ -40,8 +40,15 @@ export default function cssInjectedByJsPlugin(): Plugin {
 
                     if (chunk.type === 'chunk' && chunk.fileName.includes('.js')) {
 
-                        //IIFE http://benalman.com/news/2010/11/immediately-invoked-function-expression/
-                        chunk.code += `(function(){ try {var elementStyle = document.createElement('style'); elementStyle.innerText = \`${styleCode}\`; document.head.appendChild(elementStyle);} catch(e) {console.error(e, 'vite-plugin-css-injected-by-js: can\\'t add the style.');} })()`;
+                        let topCode: string = '';
+                        let bottomCode: string = '';
+                        if (topExecutionPriority) {
+                            bottomCode = chunk.code;
+                        } else {
+                            topCode = chunk.code;
+                        }
+
+                        chunk.code = `${topCode}(function(){ try {var elementStyle = document.createElement('style'); elementStyle.innerText = \`${styleCode}\`; document.head.appendChild(elementStyle);} catch(e) {console.error(e, 'vite-plugin-css-injected-by-js: error when trying to add the style.');} })();${bottomCode}`;
 
                         break;
 
