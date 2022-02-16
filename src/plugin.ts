@@ -6,6 +6,8 @@ import { IndexHtmlTransformContext, IndexHtmlTransformResult, Plugin } from 'vit
  * @return {Plugin}
  */
 export default function cssInjectedByJsPlugin({topExecutionPriority} = { topExecutionPriority: true }): Plugin {
+    //Globally so we can add it to legacy and non-legacy bundle.
+    let cssToInject: string = '';
 
     return {
         apply: 'build',
@@ -32,6 +34,12 @@ export default function cssInjectedByJsPlugin({topExecutionPriority} = { topExec
 
             }
 
+            if (styleCode.length > 0) {
+
+                cssToInject = styleCode.trim();
+
+            }
+
             for (const key in bundle) {
 
                 if (bundle[key]) {
@@ -48,7 +56,7 @@ export default function cssInjectedByJsPlugin({topExecutionPriority} = { topExec
                             topCode = chunk.code;
                         }
 
-                        chunk.code = `${topCode}(function(){ try {var elementStyle = document.createElement('style'); elementStyle.innerText = \`${styleCode}\`; document.head.appendChild(elementStyle);} catch(e) {console.error(e, 'vite-plugin-css-injected-by-js: error when trying to add the style.');} })();${bottomCode}`;
+                        chunk.code = `${topCode}(function(){ try {var elementStyle = document.createElement('style'); elementStyle.innerText = \`${cssToInject}\`; document.head.appendChild(elementStyle);} catch(e) {console.error(e, 'vite-plugin-css-injected-by-js: error when trying to add the style.');} })();${bottomCode}`;
 
                         break;
 
