@@ -46,7 +46,7 @@ export default function cssInjectedByJsPlugin({topExecutionPriority} = { topExec
 
                     const chunk = bundle[key];
 
-                    if (chunk.type === 'chunk' && chunk.fileName.includes('.js')) {
+                    if (chunk.type === 'chunk' && chunk.fileName.includes('.js') && !chunk.fileName.includes('polyfill')) {
 
                         let topCode: string = '';
                         let bottomCode: string = '';
