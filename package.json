@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-css-injected-by-js",
-  "version": "1.2.1",
+  "version": "1.3.0-beta",
   "description": "A Vite plugin that takes the CSS and adds it to the page through the JS. For those who want a single JS file.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
