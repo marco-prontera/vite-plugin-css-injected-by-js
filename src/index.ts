@@ -36,7 +36,7 @@ function cssInjectedByJsPlugin({topExecutionPriority} = { topExecutionPriority: 
 
             if (styleCode.length > 0) {
 
-                cssToInject = styleCode.trim();
+                cssToInject = JSON.stringify(styleCode.trim());
 
             }
 
@@ -56,7 +56,7 @@ function cssInjectedByJsPlugin({topExecutionPriority} = { topExecutionPriority: 
                             topCode = chunk.code;
                         }
 
-                        chunk.code = `${topCode}(function(){ try {var elementStyle = document.createElement('style'); elementStyle.innerText = \`${cssToInject}\`; document.head.appendChild(elementStyle);} catch(e) {console.error(e, 'vite-plugin-css-injected-by-js: error when trying to add the style.');} })();${bottomCode}`;
+                        chunk.code = `${topCode}(function(){ try {var elementStyle = document.createElement('style'); elementStyle.innerText = \`${cssToInject}\`; document.head.appendChild(elementStyle);} catch(e) {console.error('vite-plugin-css-injected-by-js', e);} })();${bottomCode}`;
 
                         break;
 
