@@ -1,11 +1,17 @@
-import { IndexHtmlTransformContext, IndexHtmlTransformResult, Plugin } from 'vite';
+import {
+    IndexHtmlTransformContext,
+    IndexHtmlTransformResult,
+    Plugin,
+} from 'vite';
 
 /**
  * Inject the CSS compiled with JS.
  *
  * @return {Plugin}
  */
-function cssInjectedByJsPlugin({topExecutionPriority} = { topExecutionPriority: true }): Plugin {
+function cssInjectedByJsPlugin(
+    { topExecutionPriority } = { topExecutionPriority: true }
+): Plugin {
     //Globally so we can add it to legacy and non-legacy bundle.
     let cssToInject: string = '';
 
@@ -14,40 +20,35 @@ function cssInjectedByJsPlugin({topExecutionPriority} = { topExecutionPriority: 
         enforce: 'post',
         name: 'css-in-js-plugin',
         generateBundle(opts, bundle) {
-
             let styleCode = '';
 
             for (const key in bundle) {
-
                 if (bundle[key]) {
-
                     const chunk = bundle[key];
 
-                    if (chunk.type === 'asset' && chunk.fileName.includes('.css')) {
-
+                    if (
+                        chunk.type === 'asset' &&
+                        chunk.fileName.includes('.css')
+                    ) {
                         styleCode += chunk.source;
                         delete bundle[key];
-
                     }
-
                 }
-
             }
 
             if (styleCode.length > 0) {
-
-                cssToInject = JSON.stringify(styleCode.trim());
-
+                cssToInject = styleCode;
             }
 
             for (const key in bundle) {
-
                 if (bundle[key]) {
-
                     const chunk = bundle[key];
 
-                    if (chunk.type === 'chunk' && chunk.fileName.includes('.js') && !chunk.fileName.includes('polyfill')) {
-
+                    if (
+                        chunk.type === 'chunk' &&
+                        chunk.fileName.includes('.js') &&
+                        !chunk.fileName.includes('polyfill')
+                    ) {
                         let topCode: string = '';
                         let bottomCode: string = '';
                         if (topExecutionPriority) {
@@ -56,45 +57,45 @@ function cssInjectedByJsPlugin({topExecutionPriority} = { topExecutionPriority: 
                             topCode = chunk.code;
                         }
 
-                        chunk.code = `${topCode}(function(){ try {var elementStyle = document.createElement('style'); elementStyle.innerText = \`${cssToInject}\`; document.head.appendChild(elementStyle);} catch(e) {console.error('vite-plugin-css-injected-by-js', e);} })();${bottomCode}`;
+                        chunk.code = topCode;
+                        chunk.code +=
+                            "(function(){ try {var elementStyle = document.createElement('style'); elementStyle.innerText = ";
+                        chunk.code += JSON.stringify(cssToInject.trim());
+                        chunk.code +=
+                            "; document.head.appendChild(elementStyle);} catch(e) {console.error('vite-plugin-css-injected-by-js', e);} })();";
+                        chunk.code += bottomCode;
 
                         break;
-
                     }
-
                 }
-
             }
-
         },
         transformIndexHtml: {
-            enforce: "post",
-            transform(html: string, ctx?: IndexHtmlTransformContext): IndexHtmlTransformResult {
-
+            enforce: 'post',
+            transform(
+                html: string,
+                ctx?: IndexHtmlTransformContext
+            ): IndexHtmlTransformResult {
                 if (!ctx || !ctx.bundle) return html;
 
                 for (const [, value] of Object.entries(ctx.bundle)) {
-
                     if (value.fileName.endsWith('.css')) {
-
                         // Remove CSS link from HTML generated.
-                        const reCSS = new RegExp(`<link rel="stylesheet"[^>]*?href="/${value.fileName}"[^>]*?>`);
+                        const reCSS = new RegExp(
+                            `<link rel="stylesheet"[^>]*?href="/${value.fileName}"[^>]*?>`
+                        );
                         html = html.replace(reCSS, '');
-
                     }
-
                 }
 
                 return html;
-
             },
         },
     };
-
 }
 
-module.exports = cssInjectedByJsPlugin
+module.exports = cssInjectedByJsPlugin;
 
-cssInjectedByJsPlugin.default = cssInjectedByJsPlugin
+cssInjectedByJsPlugin.default = cssInjectedByJsPlugin;
 
 export default cssInjectedByJsPlugin;
