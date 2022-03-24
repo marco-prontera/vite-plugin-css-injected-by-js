@@ -5,7 +5,7 @@ import { IndexHtmlTransformContext, IndexHtmlTransformResult, Plugin } from 'vit
  *
  * @return {Plugin}
  */
-export default function cssInjectedByJsPlugin({topExecutionPriority} = { topExecutionPriority: true }): Plugin {
+function cssInjectedByJsPlugin({topExecutionPriority} = { topExecutionPriority: true }): Plugin {
     //Globally so we can add it to legacy and non-legacy bundle.
     let cssToInject: string = '';
 
@@ -92,3 +92,9 @@ export default function cssInjectedByJsPlugin({topExecutionPriority} = { topExec
     };
 
 }
+
+module.exports = cssInjectedByJsPlugin
+
+cssInjectedByJsPlugin.default = cssInjectedByJsPlugin
+
+export default cssInjectedByJsPlugin;
