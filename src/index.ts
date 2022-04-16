@@ -46,7 +46,7 @@ function cssInjectedByJsPlugin(
 
                     if (
                         chunk.type === 'chunk' &&
-                        chunk.fileName.includes('.js') &&
+                        chunk.fileName.match(/.[cm]?js$/) != null &&
                         !chunk.fileName.includes('polyfill')
                     ) {
                         let topCode: string = '';
