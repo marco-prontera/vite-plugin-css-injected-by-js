@@ -59,10 +59,10 @@ function cssInjectedByJsPlugin(
 
                         chunk.code = topCode;
                         chunk.code +=
-                            "(function(){ try {var elementStyle = document.createElement('style'); elementStyle.innerText = ";
+                            "(function(){ try {var elementStyle = document.createElement('style'); elementStyle.appendChild(document.createTextNode(";
                         chunk.code += JSON.stringify(cssToInject.trim());
                         chunk.code +=
-                            "; document.head.appendChild(elementStyle);} catch(e) {console.error('vite-plugin-css-injected-by-js', e);} })();";
+                            ")); document.head.appendChild(elementStyle);} catch(e) {console.error('vite-plugin-css-injected-by-js', e);} })();";
                         chunk.code += bottomCode;
 
                         break;
