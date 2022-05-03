@@ -10,7 +10,7 @@ import {
  * @return {Plugin}
  */
 function cssInjectedByJsPlugin(
-    { topExecutionPriority } = { topExecutionPriority: true }
+    { topExecutionPriority, styleId } = { topExecutionPriority: true, styleId: '' }
 ): Plugin {
     //Globally so we can add it to legacy and non-legacy bundle.
     let cssToInject: string = '';
@@ -62,7 +62,11 @@ function cssInjectedByJsPlugin(
                             "(function(){ try {var elementStyle = document.createElement('style'); elementStyle.appendChild(document.createTextNode(";
                         chunk.code += JSON.stringify(cssToInject.trim());
                         chunk.code +=
-                            ")); document.head.appendChild(elementStyle);} catch(e) {console.error('vite-plugin-css-injected-by-js', e);} })();";
+                            ")); ";
+                        if (typeof styleId == 'string' && styleId.length > 0) {
+                            chunk.code += ` elementStyle.id = "${styleId}"; `;
+                        }
+                        chunk.code += "document.head.appendChild(elementStyle);} catch(e) {console.error('vite-plugin-css-injected-by-js', e);} })();"
                         chunk.code += bottomCode;
 
                         break;
