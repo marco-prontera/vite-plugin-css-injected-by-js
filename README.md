@@ -38,6 +38,25 @@ export default {
 }
 ```
 
+#### styleId
+If you provide a `string` for `styleId` param the code of injection will set the `id` attribute of the `style` element with the value of the parameter provided.
+This is an example:
+```ts
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default {
+  plugins: [
+    cssInjectedByJsPlugin({styleId: "foo"}),
+  ]
+}
+```
+The output injected into the DOM will look like this example:
+```html
+<head>
+    <style id="foo">/* Generated CSS rules */</style>
+</head>
+```
+
 ## Contributing
 When you make changes to plugin locally, you may want to build the js from the typescript file of the plugin. 
 Here the guidelines:
