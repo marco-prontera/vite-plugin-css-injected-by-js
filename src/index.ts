@@ -89,7 +89,7 @@ function cssInjectedByJsPlugin(
                     if (value.fileName.endsWith('.css')) {
                         // Remove CSS link from HTML generated.
                         const reCSS = new RegExp(
-                            `<link rel="stylesheet"[^>]*?href="/${value.fileName}"[^>]*?>`
+                            `<link rel="stylesheet"[^>]*?href=".*/${value.fileName}"[^>]*?>`
                         );
                         html = html.replace(reCSS, '');
                     }
