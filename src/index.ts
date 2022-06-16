@@ -50,8 +50,9 @@ export default function cssInjectedByJsPlugin(
 
             const jsAsset = bundle[jsAssets[0]] as OutputChunk;
 
+            const cssInjectionCode = await buildCSSInjectionCode(cssToInject, styleId);
             jsAsset.code = topExecutionPriority ? '' : jsAsset.code;
-            jsAsset.code += await buildCSSInjectionCode(cssToInject, styleId);
+            jsAsset.code += cssInjectionCode ? cssInjectionCode.code : '';
             jsAsset.code += !topExecutionPriority ? '' : jsAsset.code;
         },
     };
