@@ -5,14 +5,14 @@ const cssInjectedByJsId = '\0vite/all-css';
 
 export async function buildCSSInjectionCode(cssToInject: string, styleId: string): Promise<OutputChunk | null> {
     const res = await build({
-        root: __dirname,
+        root: '',
         configFile: false,
         logLevel: 'error',
         plugins: [injectionCSSCodePlugin(cssToInject, styleId)],
         build: {
             write: false,
             target: 'es2015',
-            minify: 'terser',
+            minify: 'esbuild',
             assetsDir: '',
             rollupOptions: {
                 input: {
@@ -57,6 +57,6 @@ function injectionCSSCodePlugin(cssToInject: string, styleId: string | null): Pl
 }
 
 export function removeLinkStyleSheets(html: string, cssFileName: string): string {
-    const removeCSS = new RegExp(`<link rel="stylesheet"[^>]*?href=".*/${cssFileName}"[^>]*?>`);
+    const removeCSS = new RegExp(`<link rel=".*"[^>]*?href=".*/?${cssFileName}"[^>]*?>`);
     return html.replace(removeCSS, '');
 }
