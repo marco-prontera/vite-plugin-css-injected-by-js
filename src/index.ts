@@ -1,6 +1,6 @@
 import { Plugin } from 'vite';
 import { OutputAsset, OutputChunk } from 'rollup';
-import { buildCSSInjectionCode, removeLinkStyleSheets } from './utils';
+import { buildCSSInjectionCode, removeLinkStyleSheets } from './utils.js';
 
 /**
  * Inject the CSS compiled with JS.
