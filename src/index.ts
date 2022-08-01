@@ -30,22 +30,26 @@ export default function cssInjectedByJsPlugin(
                     !bundle[i].fileName.includes('polyfill')
             );
 
+            const allCssCode = cssAssets.reduce(function extractCssCodeAndDeleteFromBundle(previousValue, cssName) {
+                const cssAsset = bundle[cssName] as OutputAsset;
+                const result = previousValue + cssAsset.source;
+                delete bundle[cssName];
+
+                return result;
+            }, '');
+
+            if (allCssCode.length > 0) {
+                cssToInject = allCssCode;
+            }
+
             for (const name of htmlFiles) {
                 const htmlChunk = bundle[name] as OutputAsset;
                 let replacedHtml = htmlChunk.source as string;
 
-                const allCssCode = cssAssets.reduce(function extractCssCodeAndDeleteFromBundle(previousValue, cssName) {
-                    const cssAsset = bundle[cssName] as OutputAsset;
-                    const result = previousValue + cssAsset.source;
-                    delete bundle[cssName];
+                cssAssets.forEach((cssName) => {
                     replacedHtml = removeLinkStyleSheets(replacedHtml, cssName);
                     htmlChunk.source = replacedHtml;
-                    return result;
-                }, '');
-
-                if (allCssCode.length > 0) {
-                    cssToInject = allCssCode;
-                }
+                });
             }
 
             const jsAsset = bundle[jsAssets[0]] as OutputChunk;
