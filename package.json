@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./cjs-esm-fixup",
-    "format": "prettier 'src/index.ts' --write"
+    "format": "prettier 'src/*.ts' --write"
   },
   "repository": {
     "type": "git",
