@@ -8,7 +8,7 @@ import { buildCSSInjectionCode, removeLinkStyleSheets } from './utils.js';
  * @return {Plugin}
  */
 export default function cssInjectedByJsPlugin(
-    { topExecutionPriority, styleId } = {
+    { topExecutionPriority, styleId }: { topExecutionPriority?: boolean; styleId?: string } | undefined = {
         topExecutionPriority: true,
         styleId: '',
     }
@@ -22,7 +22,9 @@ export default function cssInjectedByJsPlugin(
         name: 'css-in-js-plugin',
         async generateBundle(opts, bundle) {
             const htmlFiles = Object.keys(bundle).filter((i) => i.endsWith('.html'));
-            const cssAssets = Object.keys(bundle).filter((i) => bundle[i].type == 'asset' && bundle[i].fileName.endsWith('.css'));
+            const cssAssets = Object.keys(bundle).filter(
+                (i) => bundle[i].type == 'asset' && bundle[i].fileName.endsWith('.css')
+            );
             const jsAssets = Object.keys(bundle).filter(
                 (i) =>
                     bundle[i].type == 'chunk' &&
