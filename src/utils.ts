@@ -49,7 +49,7 @@ function injectionCSSCodePlugin(cssToInject: string, styleId: string | null): Pl
                 const cssCode = JSON.stringify(cssToInject.trim());
 
                 return `try{var elementStyle = document.createElement('style');${
-                    typeof styleId == 'string' && styleId.length > 0 ? `elementStyle.id = ${styleId};` : ''
+                    typeof styleId == 'string' && styleId.length > 0 ? `elementStyle.id = '${styleId}';` : ''
                 }elementStyle.appendChild(document.createTextNode(${cssCode}));document.head.appendChild(elementStyle);}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`;
             }
         },
