@@ -1,9 +1,9 @@
-import {build, Plugin} from "vite";
-import {OutputChunk} from "rollup";
+import { build, Plugin } from 'vite';
+import { OutputChunk } from 'rollup';
 
 const cssInjectedByJsId = '\0vite/all-css';
 
-export async function buildCSSInjectionCode(cssToInject: string, styleId: string): Promise<OutputChunk | null> {
+export async function buildCSSInjectionCode(cssToInject: string, styleId?: string): Promise<OutputChunk | null> {
     const res = await build({
         root: '',
         configFile: false,
@@ -36,7 +36,7 @@ export async function buildCSSInjectionCode(cssToInject: string, styleId: string
  * @param {string|null} styleId
  * @return {Plugin}
  */
-function injectionCSSCodePlugin(cssToInject: string, styleId: string | null): Plugin {
+function injectionCSSCodePlugin(cssToInject: string, styleId?: string): Plugin {
     return {
         name: 'vite:injection-css-code-plugin',
         resolveId(id: string) {
