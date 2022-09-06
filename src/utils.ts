@@ -48,9 +48,9 @@ function injectionCSSCodePlugin(cssToInject: string, styleId?: string): Plugin {
             if (id == cssInjectedByJsId) {
                 const cssCode = JSON.stringify(cssToInject.trim());
 
-                return `try{var elementStyle = typeof document !== 'undefined' && document.createElement('style');${
-                    typeof styleId == 'string' && styleId.length > 0 ? `elementStyle && elementStyle.id = '${styleId}';` : ''
-                }elementStyle && elementStyle.appendChild(document.createTextNode(${cssCode}));typeof document !== 'undefined' && document.head.appendChild(elementStyle);}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`;
+                return `try{if (typeof document !== 'undefined'){var elementStyle = document.createElement('style');${
+                    typeof styleId == 'string' && styleId.length > 0 ? `elementStyle.id = '${styleId}';` : ''
+                }elementStyle.appendChild(document.createTextNode(${cssCode}));document.head.appendChild(elementStyle);}}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`;
             }
         },
     };
