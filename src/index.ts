@@ -1,4 +1,4 @@
-import { Plugin } from 'vite';
+import { Plugin, ResolvedConfig } from 'vite';
 import { OutputAsset, OutputChunk } from 'rollup';
 import { buildCSSInjectionCode, removeLinkStyleSheets } from './utils.js';
 
@@ -15,12 +15,20 @@ export default function cssInjectedByJsPlugin(
 ): Plugin {
     //Globally so we can add it to legacy and non-legacy bundle.
     let cssToInject: string = '';
+    let config: ResolvedConfig;
 
     return {
         apply: 'build',
         enforce: 'post',
         name: 'css-in-js-plugin',
+        configResolved(_config) {
+            config = _config;
+        },
         async generateBundle(opts, bundle) {
+            if (config.build.ssr) {
+                return;
+            }
+
             const htmlFiles = Object.keys(bundle).filter((i) => i.endsWith('.html'));
             const cssAssets = Object.keys(bundle).filter(
                 (i) => bundle[i].type == 'asset' && bundle[i].fileName.endsWith('.css')
