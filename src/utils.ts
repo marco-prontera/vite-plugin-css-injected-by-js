@@ -11,15 +11,15 @@ const defaultInjectCode: InjectCode = (cssCode, styleId) =>
     }elementStyle.appendChild(document.createTextNode(${cssCode}));document.head.appendChild(elementStyle);}}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`;
 
 export async function buildCSSInjectionCode(
-    injectCode: InjectCode = defaultInjectCode,
     cssToInject: string,
-    styleId?: string
+    styleId?: string,
+    injectCode?: InjectCode
 ): Promise<OutputChunk | null> {
     const res = await build({
         root: '',
         configFile: false,
         logLevel: 'error',
-        plugins: [injectionCSSCodePlugin(injectCode, cssToInject, styleId)],
+        plugins: [injectionCSSCodePlugin(cssToInject, styleId, injectCode)],
         build: {
             write: false,
             target: 'es2015',
@@ -43,12 +43,12 @@ export async function buildCSSInjectionCode(
 }
 
 /**
- * @param {InjectCode} injectCode
  * @param {string} cssToInject
  * @param {string|null} styleId
+ * @param {InjectCode|null} injectCode
  * @return {Plugin}
  */
-function injectionCSSCodePlugin(injectCode: InjectCode, cssToInject: string, styleId?: string): Plugin {
+function injectionCSSCodePlugin(cssToInject: string, styleId?: string, injectCode?: InjectCode): Plugin {
     return {
         name: 'vite:injection-css-code-plugin',
         resolveId(id: string) {
@@ -59,8 +59,8 @@ function injectionCSSCodePlugin(injectCode: InjectCode, cssToInject: string, sty
         load(id: string) {
             if (id == cssInjectedByJsId) {
                 const cssCode = JSON.stringify(cssToInject.trim());
-
-                return injectCode(cssCode, styleId);
+                const injectFunction = injectCode || defaultInjectCode;
+                return injectFunction(cssCode, styleId);
             }
         },
     };

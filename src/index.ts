@@ -1,6 +1,6 @@
 import { Plugin, ResolvedConfig } from 'vite';
 import { OutputAsset, OutputChunk } from 'rollup';
-import { buildCSSInjectionCode, InjectCode, removeLinkStyleSheets } from './utils.js';
+import { buildCSSInjectionCode, removeLinkStyleSheets, InjectCode } from './utils.js';
 
 type Options = {
     topExecutionPriority?: boolean;
@@ -70,7 +70,7 @@ export default function cssInjectedByJsPlugin(
 
             const jsAsset = bundle[jsAssets[0]] as OutputChunk;
 
-            const cssInjectionCode = await buildCSSInjectionCode(injectCode, cssToInject, styleId);
+            const cssInjectionCode = await buildCSSInjectionCode(cssToInject, styleId, injectCode);
             const appCode = jsAsset.code;
             jsAsset.code = topExecutionPriority ? '' : appCode;
             jsAsset.code += cssInjectionCode ? cssInjectionCode.code : '';
