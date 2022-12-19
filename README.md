@@ -57,6 +57,23 @@ The output injected into the DOM will look like this example:
 </head>
 ```
 
+#### injectCode
+You can provide also a function for `injectCode` param to customize the injection code used.
+The `injectCode` callback must return a `string` (with valid JS code) and it's called with two arguments:
+- cssCode (the `string` that contains all the css code that need to be injected via JavaScript)
+- options (a simple object that currently contains only the `styleId` param)
+
+This is an example:
+```ts
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default {
+  plugins: [
+    cssInjectedByJsPlugin({injectCode: (cssCode, options) => { return `try{if(typeof document != 'undefined'){var elementStyle = document.createElement('style');elementStyle.appendChild(document.createTextNode(${cssCode}));document.head.appendChild(elementStyle);}}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`}}),
+  ]
+}
+```
+
 ## Contributing
 When you make changes to plugin locally, you may want to build the js from the typescript file of the plugin. 
 Here the guidelines:

@@ -1,11 +1,15 @@
 import { build, Plugin } from 'vite';
 import { OutputChunk } from 'rollup';
 
-export type InjectCode = (cssCode: string, styleId?: string) => string;
+interface InjectCodeOptions {
+    styleId?: string;
+}
+
+export type InjectCode = (cssCode: string, options: InjectCodeOptions) => string;
 
 const cssInjectedByJsId = '\0vite/all-css';
 
-const defaultInjectCode: InjectCode = (cssCode, styleId) =>
+const defaultInjectCode: InjectCode = (cssCode, { styleId }) =>
     `try{if(typeof document != 'undefined'){var elementStyle = document.createElement('style');${
         typeof styleId == 'string' && styleId.length > 0 ? `elementStyle.id = '${styleId}';` : ''
     }elementStyle.appendChild(document.createTextNode(${cssCode}));document.head.appendChild(elementStyle);}}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`;
@@ -60,7 +64,7 @@ function injectionCSSCodePlugin(cssToInject: string, styleId?: string, injectCod
             if (id == cssInjectedByJsId) {
                 const cssCode = JSON.stringify(cssToInject.trim());
                 const injectFunction = injectCode || defaultInjectCode;
-                return injectFunction(cssCode, styleId);
+                return injectFunction(cssCode, { styleId });
             }
         },
     };

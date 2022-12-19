@@ -1,11 +1,11 @@
-import { Plugin, ResolvedConfig } from 'vite';
-import { OutputAsset, OutputChunk } from 'rollup';
 import { buildCSSInjectionCode, removeLinkStyleSheets, InjectCode } from './utils.js';
+import { OutputAsset, OutputChunk } from 'rollup';
+import { Plugin, ResolvedConfig } from 'vite';
 
 type Options = {
-    topExecutionPriority?: boolean;
-    styleId?: string;
     injectCode?: InjectCode;
+    styleId?: string;
+    topExecutionPriority?: boolean;
 };
 
 /**
