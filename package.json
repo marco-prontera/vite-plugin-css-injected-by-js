@@ -21,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Marco-Prontera/vite-plugin-css-injected-by-js.git"
+    "url": "git+https://github.com/marco-prontera/vite-plugin-css-injected-by-js.git"
   },
   "keywords": [
     "vite",
@@ -40,12 +40,12 @@
     "@types/node": "^18.11.15",
     "prettier": "^2.8.1",
     "typescript": "^4.9.4",
-    "vite": "latest"
+    "vite": "^4.0.1"
   },
   "author": "Marco Prontera",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Marco-Prontera/vite-plugin-css-injected-by-js/issues"
+    "url": "https://github.com/marco-prontera/vite-plugin-css-injected-by-js/issues"
   },
-  "homepage": "https://github.com/Marco-Prontera/vite-plugin-css-injected-by-js#readme"
+  "homepage": "https://github.com/marco-prontera/vite-plugin-css-injected-by-js#readme"
 }
