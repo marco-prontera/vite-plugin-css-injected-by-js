@@ -6,6 +6,7 @@ interface InjectCodeOptions {
 }
 
 export type InjectCode = (cssCode: string, options: InjectCodeOptions) => string;
+export type InjectCodeFunction = (cssCode: string, options: InjectCodeOptions) => void;
 
 const cssInjectedByJsId = '\0vite/all-css';
 
@@ -17,13 +18,14 @@ const defaultInjectCode: InjectCode = (cssCode, { styleId }) =>
 export async function buildCSSInjectionCode(
     cssToInject: string,
     styleId?: string,
-    injectCode?: InjectCode
+    injectCode?: InjectCode,
+    injectCodeFunction?: InjectCodeFunction
 ): Promise<OutputChunk | null> {
     const res = await build({
         root: '',
         configFile: false,
         logLevel: 'error',
-        plugins: [injectionCSSCodePlugin(cssToInject, styleId, injectCode)],
+        plugins: [injectionCSSCodePlugin(cssToInject, styleId, injectCode, injectCodeFunction)],
         build: {
             write: false,
             target: 'es2015',
@@ -52,7 +54,12 @@ export async function buildCSSInjectionCode(
  * @param {InjectCode|null} injectCode
  * @return {Plugin}
  */
-function injectionCSSCodePlugin(cssToInject: string, styleId?: string, injectCode?: InjectCode): Plugin {
+function injectionCSSCodePlugin(
+    cssToInject: string,
+    styleId?: string,
+    injectCode?: InjectCode,
+    injectCodeFunction?: InjectCodeFunction
+): Plugin {
     return {
         name: 'vite:injection-css-code-plugin',
         resolveId(id: string) {
@@ -63,6 +70,9 @@ function injectionCSSCodePlugin(cssToInject: string, styleId?: string, injectCod
         load(id: string) {
             if (id == cssInjectedByJsId) {
                 const cssCode = JSON.stringify(cssToInject.trim());
+                if (injectCodeFunction) {
+                    return `(${injectCodeFunction})(${cssCode}, ${JSON.stringify({ styleId })})`;
+                }
                 const injectFunction = injectCode || defaultInjectCode;
                 return injectFunction(cssCode, { styleId });
             }
