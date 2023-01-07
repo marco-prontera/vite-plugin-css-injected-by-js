@@ -6,15 +6,24 @@ interface InjectCodeOptions {
 }
 
 export type InjectCode = (cssCode: string, options: InjectCodeOptions) => void;
+export type GetNonce = () => string | undefined;
 
 const cssInjectedByJsId = '\0vite/all-css';
 
-function injectStyleTag(css: string, options: InjectCodeOptions) {
+function getNonceDefault() {
+    return document.querySelector<HTMLMetaElement>('meta[property=csp-nonce]')?.content;
+}
+
+function injectStyleTag(css: string, options: InjectCodeOptions, getNonce: GetNonce) {
     try {
         if (typeof document != 'undefined') {
             const $style = document.createElement('style');
             if (options.styleId) {
                 $style.id = options.styleId;
+            }
+            const nonce = getNonce();
+            if (nonce) {
+                $style.nonce = nonce;
             }
             $style.appendChild(document.createTextNode(css));
             document.head.appendChild($style);
@@ -27,13 +36,14 @@ function injectStyleTag(css: string, options: InjectCodeOptions) {
 export async function buildCSSInjectionCode(
     cssToInject: string,
     styleId?: string,
-    injectCode?: InjectCode
+    injectCode?: InjectCode,
+    getNonce?: GetNonce
 ): Promise<OutputChunk | null> {
     const res = await build({
         root: '',
         configFile: false,
         logLevel: 'error',
-        plugins: [injectionCSSCodePlugin(cssToInject, styleId, injectCode)],
+        plugins: [injectionCSSCodePlugin(cssToInject, styleId, injectCode, getNonce)],
         build: {
             write: false,
             target: 'es2015',
@@ -62,7 +72,12 @@ export async function buildCSSInjectionCode(
  * @param {InjectCode|null} injectCode
  * @return {Plugin}
  */
-function injectionCSSCodePlugin(cssToInject: string, styleId?: string, injectCode?: InjectCode): Plugin {
+function injectionCSSCodePlugin(
+    cssToInject: string,
+    styleId?: string,
+    injectCode?: InjectCode,
+    getNonce?: GetNonce
+): Plugin {
     return {
         name: 'vite:injection-css-code-plugin',
         resolveId(id: string) {
@@ -74,7 +89,8 @@ function injectionCSSCodePlugin(cssToInject: string, styleId?: string, injectCod
             if (id == cssInjectedByJsId) {
                 const cssCode = JSON.stringify(cssToInject.trim());
                 const injectFunction = injectCode || injectStyleTag;
-                return `(${injectFunction})(${cssCode}, ${JSON.stringify({ styleId })})`;
+                const getNonceFunction = getNonce || getNonceDefault;
+                return `(${injectFunction})(${cssCode}, ${JSON.stringify({ styleId })}, ${getNonceFunction})`;
             }
         },
     };
