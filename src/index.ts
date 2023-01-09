@@ -44,13 +44,19 @@ export default function cssInjectedByJsPlugin(
             const jsAssets = Object.keys(bundle).filter(
                 (i) =>
                     bundle[i].type == 'chunk' &&
+                    // @ts-ignore isEntry is supported by the highest parent of the OutputChunk type
+                    bundle[i].isEntry == true &&
                     bundle[i].fileName.match(/.[cm]?js$/) != null &&
                     !bundle[i].fileName.includes('polyfill')
             );
 
             const allCssCode = cssAssets.reduce(function extractCssCodeAndDeleteFromBundle(previousValue, cssName) {
                 const cssAsset = bundle[cssName] as OutputAsset;
-                const result = previousValue + cssAsset.source;
+                const cssAssetSource =
+                    typeof cssAsset.source == 'string'
+                        ? cssAsset.source.replace(/(\r\n|\n|\r)+$/gm, '')
+                        : cssAsset.source;
+                const result = previousValue + cssAssetSource;
                 delete bundle[cssName];
 
                 return result;
@@ -70,7 +76,8 @@ export default function cssInjectedByJsPlugin(
                 });
             }
 
-            const jsAsset = bundle[jsAssets[0]] as OutputChunk;
+            // This should be always the root of the application
+            const jsAsset = bundle[jsAssets[jsAssets.length - 1]] as OutputChunk;
 
             const cssInjectionCode = await buildCSSInjectionCode({
                 cssToInject,

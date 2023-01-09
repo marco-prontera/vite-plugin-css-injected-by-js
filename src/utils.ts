@@ -67,12 +67,6 @@ interface InjectionCSSCodePluginInput {
     useStrictCSP?: boolean;
 }
 
-/**
- * @param {string} cssToInject
- * @param {string|null} styleId
- * @param {InjectCode|null} injectCode
- * @return {Plugin}
- */
 function injectionCSSCodePlugin({
     cssToInject,
     injectCode,

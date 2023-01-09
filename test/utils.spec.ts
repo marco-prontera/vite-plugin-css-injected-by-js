@@ -1,5 +1,5 @@
 import { test, expect, vi, beforeAll } from 'vitest';
-import { buildCSSInjectionCode } from './utils';
+import { buildCSSInjectionCode } from '../src/utils';
 
 const onerror = vi.fn();
 window.onerror = onerror;
@@ -54,6 +54,7 @@ test('Generate JS that applies styles, with a nonce', async () => {
     // Applied style!
     expect(getComputedStyle(document.body).color).toBe('red');
 
+    // @ts-ignore
     expect($style?.nonce).toBe('abc-123');
 });
 
