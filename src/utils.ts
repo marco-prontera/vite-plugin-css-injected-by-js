@@ -15,17 +15,23 @@ const defaultInjectCode: InjectCode = (cssCode, { styleId }) =>
         typeof styleId == 'string' && styleId.length > 0 ? `elementStyle.id = '${styleId}';` : ''
     }elementStyle.appendChild(document.createTextNode(${cssCode}));document.head.appendChild(elementStyle);}}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`;
 
-export async function buildCSSInjectionCode(
-    cssToInject: string,
-    styleId?: string,
-    injectCode?: InjectCode,
-    injectCodeFunction?: InjectCodeFunction
-): Promise<OutputChunk | null> {
+interface BuildCSSInjectionCodeInput {
+    cssToInject: string;
+    styleId?: string;
+    injectCode?: InjectCode;
+    injectCodeFunction?: InjectCodeFunction;
+}
+export async function buildCSSInjectionCode({
+    cssToInject,
+    styleId,
+    injectCode,
+    injectCodeFunction,
+}: BuildCSSInjectionCodeInput): Promise<OutputChunk | null> {
     const res = await build({
         root: '',
         configFile: false,
         logLevel: 'error',
-        plugins: [injectionCSSCodePlugin(cssToInject, styleId, injectCode, injectCodeFunction)],
+        plugins: [injectionCSSCodePlugin({ cssToInject, styleId, injectCode, injectCodeFunction })],
         build: {
             write: false,
             target: 'es2015',
@@ -48,18 +54,25 @@ export async function buildCSSInjectionCode(
     return _cssChunk.output[0];
 }
 
+interface InjectionCSSCodePluginInput {
+    cssToInject: string;
+    styleId?: string;
+    injectCode?: InjectCode;
+    injectCodeFunction?: InjectCodeFunction;
+}
+
 /**
  * @param {string} cssToInject
  * @param {string|null} styleId
  * @param {InjectCode|null} injectCode
  * @return {Plugin}
  */
-function injectionCSSCodePlugin(
-    cssToInject: string,
-    styleId?: string,
-    injectCode?: InjectCode,
-    injectCodeFunction?: InjectCodeFunction
-): Plugin {
+function injectionCSSCodePlugin({
+    cssToInject,
+    injectCode,
+    injectCodeFunction,
+    styleId,
+}: InjectionCSSCodePluginInput): Plugin {
     return {
         name: 'vite:injection-css-code-plugin',
         resolveId(id: string) {
