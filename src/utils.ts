@@ -1,5 +1,6 @@
 import { build, Plugin } from 'vite';
 import { OutputChunk } from 'rollup';
+import { BuildCSSInjectionConfiguration } from './interface';
 
 interface InjectCodeOptions {
     styleId?: string;
@@ -18,20 +19,13 @@ const defaultInjectCode: InjectCode = (cssCode, { styleId, useStrictCSP }) =>
         useStrictCSP ? `elementStyle.nonce = document.head.querySelector('meta[property=csp-nonce]')?.content;` : ''
     }elementStyle.appendChild(document.createTextNode(${cssCode}));document.head.appendChild(elementStyle);}}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`;
 
-interface BuildCSSInjectionCodeInput {
-    cssToInject: string;
-    styleId?: string;
-    injectCode?: InjectCode;
-    injectCodeFunction?: InjectCodeFunction;
-    useStrictCSP?: boolean;
-}
 export async function buildCSSInjectionCode({
     cssToInject,
     styleId,
     injectCode,
     injectCodeFunction,
     useStrictCSP,
-}: BuildCSSInjectionCodeInput): Promise<OutputChunk | null> {
+}: BuildCSSInjectionConfiguration): Promise<OutputChunk | null> {
     const res = await build({
         root: '',
         configFile: false,
@@ -59,27 +53,13 @@ export async function buildCSSInjectionCode({
     return _cssChunk.output[0];
 }
 
-interface InjectionCSSCodePluginInput {
-    cssToInject: string;
-    styleId?: string;
-    injectCode?: InjectCode;
-    injectCodeFunction?: InjectCodeFunction;
-    useStrictCSP?: boolean;
-}
-
-/**
- * @param {string} cssToInject
- * @param {string|null} styleId
- * @param {InjectCode|null} injectCode
- * @return {Plugin}
- */
 function injectionCSSCodePlugin({
     cssToInject,
     injectCode,
     injectCodeFunction,
     styleId,
     useStrictCSP,
-}: InjectionCSSCodePluginInput): Plugin {
+}: BuildCSSInjectionConfiguration): Plugin {
     return {
         name: 'vite:injection-css-code-plugin',
         resolveId(id: string) {

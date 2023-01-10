@@ -1,6 +1,6 @@
 {
     "name": "vite-plugin-css-injected-by-js",
-    "version": "2.2.0",
+    "version": "2.3.0",
     "description": "A Vite plugin that takes the CSS and adds it to the page through the JS. For those who want a single JS file.",
     "main": "dist/cjs/index.js",
     "module": "dist/esm/index.js",
@@ -17,8 +17,9 @@
     ],
     "scripts": {
         "test": "vitest",
-        "build": "npm run test && rm -rf dist && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./cjs-esm-fixup",
-        "format": "prettier 'src/*.ts' --write"
+        "ci-test": "vitest run",
+        "build": "npm run ci-test && rm -rf dist && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./cjs-esm-fixup",
+        "format": "prettier '{src,test}/*.ts' --write"
     },
     "repository": {
         "type": "git",
