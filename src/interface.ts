@@ -4,7 +4,7 @@ export interface PluginConfiguration {
     injectCode?: InjectCode;
     injectCodeFunction?: InjectCodeFunction;
     styleId?: string;
-    topExecutionPriority?: true;
+    topExecutionPriority?: boolean;
     useStrictCSP?: boolean;
 }
 
