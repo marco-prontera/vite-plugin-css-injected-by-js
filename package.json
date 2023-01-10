@@ -17,7 +17,8 @@
     ],
     "scripts": {
         "test": "vitest",
-        "build": "npm run test && rm -rf dist && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./cjs-esm-fixup",
+        "ci-test": "vitest run",
+        "build": "npm run ci-test && rm -rf dist && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./cjs-esm-fixup",
         "format": "prettier '{src,test}/*.ts' --write"
     },
     "repository": {
