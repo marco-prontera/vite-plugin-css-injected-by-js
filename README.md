@@ -24,6 +24,7 @@ export default {
 ### Configurations
 When you add the plugin, you can provide a configuration object.
 For now, you can configure only when the injection of CSS is done at execution time ```topExecutionPriority```.
+
 #### topExecutionPriority
 The default behavior adds the injection of CSS before your bundle code.
 If you provide ```topExecutionPriority``` equal to: ```false```  the code of injection will be added after the bundle code.
@@ -103,6 +104,23 @@ export default {
     ]
 }
 ```
+
+#### useStrictCSP
+The `useStrictCSP` configuration option adds a nonce to style tags based on `<meta property="csp-nonce" content={{ nonce }} />`.
+See the following [link](https://cssinjs.org/csp/?v=v10.9.2) for more information.
+
+This is an example:
+```ts
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default {
+  plugins: [
+    cssInjectedByJsPlugin({useStrictCSP: true}),
+  ]
+}
+```
+The tag `<meta property="csp-nonce" content={{ nonce }} />` (nonce should be replaced with the value) must be present in your html page.
+The `content` value of that tag will be provided to the `nonce` property of the `style` element that will be injected by our default injection code.
 
 ## Contributing
 When you make changes to plugin locally, you may want to build the js from the typescript file of the plugin. 
