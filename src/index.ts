@@ -1,14 +1,7 @@
-import { buildCSSInjectionCode, removeLinkStyleSheets, InjectCode, InjectCodeFunction } from './utils.js';
+import { buildCSSInjectionCode, removeLinkStyleSheets } from './utils.js';
 import { OutputAsset, OutputChunk } from 'rollup';
 import { Plugin, ResolvedConfig } from 'vite';
-
-type Options = {
-    injectCode?: InjectCode;
-    injectCodeFunction?: InjectCodeFunction;
-    styleId?: string;
-    topExecutionPriority?: boolean;
-    useStrictCSP?: boolean;
-};
+import { PluginConfiguration } from './interface';
 
 /**
  * Inject the CSS compiled with JS.
@@ -16,7 +9,7 @@ type Options = {
  * @return {Plugin}
  */
 export default function cssInjectedByJsPlugin(
-    { topExecutionPriority, styleId, injectCode, injectCodeFunction, useStrictCSP }: Options | undefined = {
+    { topExecutionPriority, styleId, injectCode, injectCodeFunction, useStrictCSP }: PluginConfiguration | undefined = {
         topExecutionPriority: true,
         styleId: '',
     }
