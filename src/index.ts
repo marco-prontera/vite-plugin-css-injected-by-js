@@ -9,7 +9,14 @@ import { PluginConfiguration } from './interface';
  * @return {Plugin}
  */
 export default function cssInjectedByJsPlugin(
-    { topExecutionPriority, styleId, injectCode, injectCodeFunction, useStrictCSP }: PluginConfiguration | undefined = {
+    {
+        topExecutionPriority,
+        styleId,
+        injectCode,
+        injectCodeFunction,
+        useStrictCSP,
+        jsAssetsFilterFunction,
+    }: PluginConfiguration | undefined = {
         topExecutionPriority: true,
         styleId: '',
     }
@@ -33,14 +40,6 @@ export default function cssInjectedByJsPlugin(
             const htmlFiles = Object.keys(bundle).filter((i) => i.endsWith('.html'));
             const cssAssets = Object.keys(bundle).filter(
                 (i) => bundle[i].type == 'asset' && bundle[i].fileName.endsWith('.css')
-            );
-            const jsAssets = Object.keys(bundle).filter(
-                (i) =>
-                    bundle[i].type == 'chunk' &&
-                    // @ts-ignore isEntry is supported by the highest parent of the OutputChunk type
-                    bundle[i].isEntry == true &&
-                    bundle[i].fileName.match(/.[cm]?js$/) != null &&
-                    !bundle[i].fileName.includes('polyfill')
             );
 
             const allCssCode = cssAssets.reduce(function extractCssCodeAndDeleteFromBundle(previousValue, cssName) {
@@ -69,8 +68,26 @@ export default function cssInjectedByJsPlugin(
                 });
             }
 
-            // This should be always the root of the application
-            const jsAsset = bundle[jsAssets[jsAssets.length - 1]] as OutputChunk;
+            const jsAssetsFilter =
+                typeof jsAssetsFilterFunction == 'function' ? jsAssetsFilterFunction : defaultJsAssetsFilter;
+
+            let jsAssetTargets = [];
+            if (typeof jsAssetsFilterFunction != 'function') {
+                const jsAssets = Object.keys(bundle).filter(
+                    (i) => isJsOutputChunk(bundle[i]) && defaultJsAssetsFilter(bundle[i] as OutputChunk)
+                );
+
+                // This should be always the root of the application
+                jsAssetTargets.push(bundle[jsAssets[jsAssets.length - 1]] as OutputChunk);
+            } else {
+                const jsAssets = Object.keys(bundle).filter(
+                    (i) => isJsOutputChunk(bundle[i]) && jsAssetsFilter(bundle[i] as OutputChunk)
+                );
+
+                jsAssets.forEach((jsAssetKey) => {
+                    jsAssetTargets.push(bundle[jsAssetKey] as OutputChunk);
+                });
+            }
 
             const cssInjectionCode = await buildCSSInjectionCode({
                 cssToInject,
@@ -79,10 +96,21 @@ export default function cssInjectedByJsPlugin(
                 injectCodeFunction,
                 useStrictCSP,
             });
-            const appCode = jsAsset.code;
-            jsAsset.code = topExecutionPriority ? '' : appCode;
-            jsAsset.code += cssInjectionCode ? cssInjectionCode.code : '';
-            jsAsset.code += !topExecutionPriority ? '' : appCode;
+
+            jsAssetTargets.forEach((jsAsset) => {
+                const appCode = jsAsset.code;
+                jsAsset.code = topExecutionPriority ? '' : appCode;
+                jsAsset.code += cssInjectionCode ? cssInjectionCode.code : '';
+                jsAsset.code += !topExecutionPriority ? '' : appCode;
+            });
         },
     };
+}
+
+function isJsOutputChunk(chunk: OutputAsset | OutputChunk): boolean {
+    return chunk.type == 'chunk' && chunk.fileName.match(/.[cm]?js$/) != null;
+}
+
+function defaultJsAssetsFilter(chunk: OutputChunk) {
+    return chunk.isEntry && !chunk.fileName.includes('polyfill');
 }
