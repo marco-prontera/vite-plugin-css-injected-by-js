@@ -77,8 +77,15 @@ export default function cssInjectedByJsPlugin(
                     (i) => isJsOutputChunk(bundle[i]) && defaultJsAssetsFilter(bundle[i] as OutputChunk)
                 );
 
+                const jsTargetFileName = jsAssets[jsAssets.length - 1];
+                if (jsAssets.length > 1) {
+                    config.logger.warn(
+                        `The plugin has identified "${jsTargetFileName}" as one of the multiple output files marked as "entry" to put the CSS injection code. However, if this is not the intended file to add the CSS injection code, you can use the "jsAssetsFilterFunction" parameter to specify the desired output file (read docs).`
+                    );
+                }
+
                 // This should be always the root of the application
-                jsAssetTargets.push(bundle[jsAssets[jsAssets.length - 1]] as OutputChunk);
+                jsAssetTargets.push(bundle[jsTargetFileName] as OutputChunk);
             } else {
                 const jsAssets = Object.keys(bundle).filter(
                     (i) => isJsOutputChunk(bundle[i]) && jsAssetsFilter(bundle[i] as OutputChunk)
@@ -96,6 +103,12 @@ export default function cssInjectedByJsPlugin(
                 injectCodeFunction,
                 useStrictCSP,
             });
+
+            if (jsAssetTargets.length == 0) {
+                config.logger.error(
+                    'The plugin was unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configuration.'
+                );
+            }
 
             jsAssetTargets.forEach((jsAsset) => {
                 const appCode = jsAsset.code;
