@@ -1,4 +1,4 @@
-import { buildCSSInjectionCode, removeLinkStyleSheets } from './utils.js';
+import { buildCSSInjectionCode, removeLinkStyleSheets, warnLog, debugLog } from './utils.js';
 import { OutputAsset, OutputChunk } from 'rollup';
 import { Plugin, ResolvedConfig } from 'vite';
 import { PluginConfiguration } from './interface';
@@ -25,10 +25,12 @@ export default function cssInjectedByJsPlugin(
     let cssToInject: string = '';
     let config: ResolvedConfig;
 
+    const isDebug = process.env.VITE_CSS_INJECTED_BY_JS_DEBUG;
+
     return {
         apply: 'build',
         enforce: 'post',
-        name: 'css-in-js-plugin',
+        name: 'vite-plugin-css-injected-by-js',
         configResolved(_config) {
             config = _config;
         },
@@ -79,9 +81,16 @@ export default function cssInjectedByJsPlugin(
 
                 const jsTargetFileName = jsAssets[jsAssets.length - 1];
                 if (jsAssets.length > 1) {
-                    config.logger.warn(
-                        `The plugin has identified "${jsTargetFileName}" as one of the multiple output files marked as "entry" to put the CSS injection code. However, if this is not the intended file to add the CSS injection code, you can use the "jsAssetsFilterFunction" parameter to specify the desired output file (read docs).`
+                    warnLog(
+                        `[vite-plugin-css-injected-by-js] has identified "${jsTargetFileName}" as one of the multiple output files marked as "entry" to put the CSS injection code. However, if this is not the intended file to add the CSS injection code, you can use the "jsAssetsFilterFunction" parameter to specify the desired output file (read docs).`
                     );
+                    if (isDebug) {
+                        debugLog(
+                            `[vite-plugin-css-injected-by-js] identified js file targets: ${jsAssets.join(
+                                ', '
+                            )}. Selected "${jsTargetFileName}".\n`
+                        );
+                    }
                 }
 
                 // This should be always the root of the application
@@ -105,8 +114,8 @@ export default function cssInjectedByJsPlugin(
             });
 
             if (jsAssetTargets.length == 0) {
-                config.logger.error(
-                    'The plugin was unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configuration.'
+                throw new Error(
+                    'Unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configurations.'
                 );
             }
 
