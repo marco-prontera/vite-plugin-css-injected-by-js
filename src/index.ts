@@ -8,22 +8,20 @@ import { PluginConfiguration } from './interface';
  *
  * @return {Plugin}
  */
-export default function cssInjectedByJsPlugin(
-    {
-        topExecutionPriority,
-        styleId,
-        injectCode,
-        injectCodeFunction,
-        useStrictCSP,
-        jsAssetsFilterFunction,
-    }: PluginConfiguration | undefined = {
-        topExecutionPriority: true,
-        styleId: '',
-    }
-): Plugin {
+export default function cssInjectedByJsPlugin({
+    injectCode,
+    injectCodeFunction,
+    jsAssetsFilterFunction,
+    preRenderCSSCode,
+    styleId,
+    topExecutionPriority,
+    useStrictCSP,
+}: PluginConfiguration | undefined = {}): Plugin {
     //Globally so we can add it to legacy and non-legacy bundle.
     let cssToInject: string = '';
     let config: ResolvedConfig;
+
+    const topExecutionPriorityFlag = typeof topExecutionPriority == 'boolean' ? topExecutionPriority : true;
 
     const isDebug = process.env.VITE_CSS_INJECTED_BY_JS_DEBUG;
 
@@ -106,7 +104,7 @@ export default function cssInjectedByJsPlugin(
             }
 
             const cssInjectionCode = await buildCSSInjectionCode({
-                cssToInject,
+                cssToInject: typeof preRenderCSSCode == 'function' ? preRenderCSSCode(cssToInject) : cssToInject,
                 styleId,
                 injectCode,
                 injectCodeFunction,
@@ -121,9 +119,9 @@ export default function cssInjectedByJsPlugin(
 
             jsAssetTargets.forEach((jsAsset) => {
                 const appCode = jsAsset.code;
-                jsAsset.code = topExecutionPriority ? '' : appCode;
+                jsAsset.code = topExecutionPriorityFlag ? '' : appCode;
                 jsAsset.code += cssInjectionCode ? cssInjectionCode.code : '';
-                jsAsset.code += !topExecutionPriority ? '' : appCode;
+                jsAsset.code += !topExecutionPriorityFlag ? '' : appCode;
             });
         },
     };
