@@ -84,3 +84,11 @@ export function removeLinkStyleSheets(html: string, cssFileName: string): string
     const removeCSS = new RegExp(`<link rel=".*"[^>]*?href=".*/?${cssFileName}"[^>]*?>`);
     return html.replace(removeCSS, '');
 }
+
+export function warnLog(msg: string) {
+    console.warn(`\x1b[33m \n${msg} \x1b[39m`);
+}
+
+export function debugLog(msg: string) {
+    console.debug(`\x1b[34m \n${msg} \x1b[39m`);
+}
