@@ -32,6 +32,25 @@ test('Generate JS that applies styles', async () => {
     expect(getComputedStyle(document.body).color).toBe('red');
 });
 
+test('Generate JS that applies styles, without styleId', async () => {
+    const output = await buildCSSInjectionCode({
+        cssToInject: 'body { color: red; }',
+    });
+
+    const $script = document.createElement('script');
+    $script.textContent = output?.code || 'throw new Error("UNCAUGHT ERROR")';
+    document.head.appendChild($script);
+
+    // Doesn't error
+    expect(onerror).not.toBeCalled();
+
+    // StyleId applied
+    expect(document.head.querySelector(`style`)).not.toBeNull();
+
+    // Applied style!
+    expect(getComputedStyle(document.body).color).toBe('red');
+});
+
 test('Generate JS that applies styles, with a nonce', async () => {
     const styleId = `style-${Date.now()}`;
     const output = await buildCSSInjectionCode({
@@ -130,4 +149,25 @@ test('Remove link stylesheets', async () => {
 
     const tagLinkNotChanged = removeLinkStyleSheets(tagLinkCssFileName1, cssFileNameDifferent);
     expect(tagLinkNotChanged).toEqual(tagLinkCssFileName1);
+});
+
+test('Generate JS that applies styles', async () => {
+    const styleId = `style-${Date.now()}`;
+    const output = await buildCSSInjectionCode({
+        cssToInject: 'body { color: red; }',
+        styleId,
+    });
+
+    const $script = document.createElement('script');
+    $script.textContent = output?.code || 'throw new Error("UNCAUGHT ERROR")';
+    document.head.appendChild($script);
+
+    // Doesn't error
+    expect(onerror).not.toBeCalled();
+
+    // StyleId applied
+    expect(document.head.querySelector(`style#${styleId}`)).not.toBeNull();
+
+    // Applied style!
+    expect(getComputedStyle(document.body).color).toBe('red');
 });
