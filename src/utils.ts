@@ -85,10 +85,12 @@ export function removeLinkStyleSheets(html: string, cssFileName: string): string
     return html.replace(removeCSS, '');
 }
 
+/* istanbul ignore next -- @preserve */
 export function warnLog(msg: string) {
     console.warn(`\x1b[33m \n${msg} \x1b[39m`);
 }
 
+/* istanbul ignore next -- @preserve */
 export function debugLog(msg: string) {
     console.debug(`\x1b[34m \n${msg} \x1b[39m`);
 }
