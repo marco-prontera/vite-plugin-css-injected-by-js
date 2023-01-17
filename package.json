@@ -17,6 +17,7 @@
     ],
     "scripts": {
         "test": "vitest",
+        "coverage": "vitest run --coverage",
         "ci-test": "vitest run",
         "build": "npm run ci-test && rm -rf dist && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./cjs-esm-fixup",
         "format": "prettier '{src,test}/*.ts' --write"
