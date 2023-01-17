@@ -1,5 +1,5 @@
 import { test, expect, vi, beforeAll } from 'vitest';
-import { buildCSSInjectionCode } from '../src/utils';
+import { buildCSSInjectionCode, removeLinkStyleSheets } from '../src/utils';
 
 const onerror = vi.fn();
 window.onerror = onerror;
@@ -117,4 +117,17 @@ test('Generate JS that applies styles from custom code, with a nonce', async () 
 
     // Did we dynamically set the nonce?
     expect(elem?.nonce).toBe('abc-123');
+});
+
+test('Remove link stylesheets', async () => {
+    const htmlGenerate = (cssFileName) => `<link rel="stylesheet" href="${cssFileName}">`;
+    const cssFileName1 = `foo.css`;
+    const cssFileNameDifferent = `bar.css`;
+
+    const tagLinkCssFileName1 = htmlGenerate(cssFileName1);
+    const emptyString = removeLinkStyleSheets(tagLinkCssFileName1, cssFileName1);
+    expect(emptyString).toEqual('');
+
+    const tagLinkNotChanged = removeLinkStyleSheets(tagLinkCssFileName1, cssFileNameDifferent);
+    expect(tagLinkNotChanged).toEqual(tagLinkCssFileName1);
 });
