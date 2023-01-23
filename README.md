@@ -1,9 +1,9 @@
-# Vite Plugin: CssInjectedByJs
+# vite-plugin-css-injected-by-js 🤯
 
 A Vite plugin that takes the CSS and adds it to the page through the JS. For those who want a single JS file.
 
 The plugin can be configured to execute the CSS injection before or after your app code, and you can also provide a
-custom id for the injected style element and a function to customize the injection code used.
+custom id for the injected style element and other configurations that fulfill some particular cases.
 
 ## How does it work
 
@@ -31,8 +31,8 @@ export default {
 
 ### Configurations
 
-When you add the plugin, you can provide a configuration object. For now, you can configure only when the injection of
-CSS is done at execution time ```topExecutionPriority```.
+When you add the plugin, you can provide a configuration object.
+Below you can find all configuration parameters available.
 
 #### topExecutionPriority
 
@@ -218,13 +218,20 @@ will be injected by our default injection code.
 
 ## Contributing
 
-When you make changes to plugin locally, you may want to build the js from the typescript file of the plugin. Here the
-guidelines:
+When you make changes to plugin locally, you may want to build the js from the typescript file of the plugin. 
+
+Here the guidelines:
 
 ### Install
 
 ```
 npm install
+```
+
+### Testing
+
+```
+npm run test
 ```
 
 ### Build plugin
@@ -233,4 +240,4 @@ npm install
 npm run build
 ```
 
-See CONTRIBUTING.md for more information.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
