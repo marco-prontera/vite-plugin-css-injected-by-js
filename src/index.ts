@@ -16,6 +16,7 @@ export default function cssInjectedByJsPlugin({
     styleId,
     topExecutionPriority,
     useStrictCSP,
+    relativeCSSInjection,
 }: PluginConfiguration | undefined = {}): Plugin {
     //Globally so we can add it to legacy and non-legacy bundle.
     let config: ResolvedConfig;
@@ -92,15 +93,28 @@ export default function cssInjectedByJsPlugin({
                 );
             }
 
-            for (const jsAsset of jsAssetTargets) {
-                // @ts-ignore
-                const cssNamesSet: Set<string> = jsAsset.viteMetadata.importedCss;
-                let cssToInject: string = '';
-                cssNamesSet.forEach((cssName) => {
-                    cssToInject += String(extractCssCode(bundle[cssName] as OutputAsset));
-                });
+            const allCssCode = cssAssets
+                .map((cssName) => bundle[cssName] as OutputAsset)
+                .map(
+                    (cssAsset) =>
+                        (typeof cssAsset.source == 'string'
+                            ? cssAsset.source.replace(/(\r\n|\n|\r)+$/gm, '')
+                            : cssAsset.source) as string
+                )
+                .reduce((previousValue, cssAssetSource) => previousValue + cssAssetSource, '');
 
-                // delete bundle[cssName];
+            for (const jsAsset of jsAssetTargets) {
+                let cssToInject: string = '';
+
+                if (!relativeCSSInjection && allCssCode.length > 0) {
+                    cssToInject = allCssCode;
+                } else {
+                    // @ts-ignore
+                    const cssNamesSet: Set<string> = jsAsset.viteMetadata.importedCss;
+                    cssNamesSet.forEach((cssName) => {
+                        cssToInject += String(extractCssCode(bundle[cssName] as OutputAsset));
+                    });
+                }
                 const cssInjectionCode = await buildCSSInjectionCode({
                     cssToInject: typeof preRenderCSSCode == 'function' ? preRenderCSSCode(cssToInject) : cssToInject,
                     styleId,
