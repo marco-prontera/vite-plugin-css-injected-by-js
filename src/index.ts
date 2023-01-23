@@ -121,8 +121,9 @@ export default function cssInjectedByJsPlugin({
     };
 }
 
-const extractCssCode = (cssAsset: OutputAsset) =>
-    typeof cssAsset.source == 'string' ? cssAsset.source.replace(/(\r\n|\n|\r)+$/gm, '') : cssAsset.source;
+function extractCssCode(cssAsset: OutputAsset) {
+    return typeof cssAsset.source == 'string' ? cssAsset.source.replace(/(\r\n|\n|\r)+$/gm, '') : cssAsset.source;
+}
 
 function isJsOutputChunk(chunk: OutputAsset | OutputChunk): boolean {
     return chunk.type == 'chunk' && chunk.fileName.match(/.[cm]?js$/) != null;
