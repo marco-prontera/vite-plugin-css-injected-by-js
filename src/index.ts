@@ -13,10 +13,10 @@ export default function cssInjectedByJsPlugin({
     injectCodeFunction,
     jsAssetsFilterFunction,
     preRenderCSSCode,
+    relativeCSSInjection,
     styleId,
     topExecutionPriority,
     useStrictCSP,
-    relativeCSSInjection,
 }: PluginConfiguration | undefined = {}): Plugin {
     //Globally so we can add it to legacy and non-legacy bundle.
     let globalCssToInject: string = '';
