@@ -19,6 +19,7 @@ export default function cssInjectedByJsPlugin({
     relativeCSSInjection,
 }: PluginConfiguration | undefined = {}): Plugin {
     //Globally so we can add it to legacy and non-legacy bundle.
+    let globalCssToInject: string = '';
     let config: ResolvedConfig;
 
     const topExecutionPriorityFlag = typeof topExecutionPriority == 'boolean' ? topExecutionPriority : true;
@@ -93,21 +94,21 @@ export default function cssInjectedByJsPlugin({
                 );
             }
 
-            const allCssCode = cssAssets
-                .map((cssName) => bundle[cssName] as OutputAsset)
-                .map(
-                    (cssAsset) =>
-                        (typeof cssAsset.source == 'string'
-                            ? cssAsset.source.replace(/(\r\n|\n|\r)+$/gm, '')
-                            : cssAsset.source) as string
-                )
-                .reduce((previousValue, cssAssetSource) => previousValue + cssAssetSource, '');
+            if (!relativeCSSInjection) {
+                const allCssCode = cssAssets.reduce(function extractCssCodeAndDeleteFromBundle(previousValue, cssName) {
+                    return previousValue + extractCssCode(bundle[cssName] as OutputAsset);
+                }, '');
+
+                if (allCssCode.length > 0) {
+                    globalCssToInject = allCssCode;
+                }
+            }
 
             for (const jsAsset of jsAssetTargets) {
                 let cssToInject: string = '';
 
-                if (!relativeCSSInjection && allCssCode.length > 0) {
-                    cssToInject = allCssCode;
+                if (!relativeCSSInjection && globalCssToInject.length > 0) {
+                    cssToInject = globalCssToInject;
                 } else {
                     // @ts-ignore
                     const cssNamesSet: Set<string> = jsAsset.viteMetadata.importedCss;
@@ -115,6 +116,7 @@ export default function cssInjectedByJsPlugin({
                         cssToInject += String(extractCssCode(bundle[cssName] as OutputAsset));
                     });
                 }
+
                 const cssInjectionCode = await buildCSSInjectionCode({
                     cssToInject: typeof preRenderCSSCode == 'function' ? preRenderCSSCode(cssToInject) : cssToInject,
                     styleId,
