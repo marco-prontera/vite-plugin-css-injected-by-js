@@ -112,7 +112,7 @@ export default function cssInjectedByJsPlugin({
                 } else {
                     // @ts-ignore
                     const cssNamesSet: Set<string> = jsAsset.viteMetadata.importedCss;
-                    cssNamesSet.forEach((cssName) => {
+                    cssNamesSet.forEach(function extractCssToInject(cssName) {
                         cssToInject += String(extractCssCode(bundle[cssName] as OutputAsset));
                     });
                 }
@@ -130,8 +130,9 @@ export default function cssInjectedByJsPlugin({
                 jsAsset.code += cssInjectionCode ? cssInjectionCode.code : '';
                 jsAsset.code += !topExecutionPriorityFlag ? '' : appCode;
             }
-            cssAssets.forEach((css) => {
-                delete bundle[css];
+
+            cssAssets.forEach(function deleteCSSOutputAssetsFromBundle(cssName) {
+                delete bundle[cssName];
             });
         },
     };
