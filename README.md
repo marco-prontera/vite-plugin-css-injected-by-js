@@ -34,7 +34,7 @@ export default {
 When you add the plugin, you can provide a configuration object.
 Below you can find all configuration parameters available.
 
-#### topExecutionPriority
+#### topExecutionPriority (boolean)
 
 The default behavior adds the injection of CSS before your bundle code. If you provide ```topExecutionPriority``` equal
 to: ```false```  the code of injection will be added after the bundle code. This is an example:
@@ -49,7 +49,7 @@ export default {
 }
 ```
 
-#### styleId
+#### styleId (string)
 
 If you provide a `string` for `styleId` param the code of injection will set the `id` attribute of the `style` element
 with the value of the parameter provided. This is an example:
@@ -73,7 +73,7 @@ The output injected into the DOM will look like this example:
 </head>
 ```
 
-#### preRenderCSSCode
+#### preRenderCSSCode (function)
 
 You can use the preRenderCSSCode parameter to make specific changes to your CSS before it is printed in the output JS
 file. This parameter takes the CSS code extracted from the build process and allows you to return the modified CSS code
@@ -94,7 +94,7 @@ export default {
 }
 ```
 
-#### injectCode
+#### injectCode (function)
 
 You can provide also a function for `injectCode` param to customize the injection code used. The `injectCode` callback
 must return a `string` (with valid JS code) and it's called with two arguments:
@@ -118,7 +118,7 @@ export default {
 }
 ```
 
-#### injectCodeFunction
+#### injectCodeFunction (function)
 
 If you prefer to specify the injectCode as a plain function you can use the `injectCodeFunction` param.
 
@@ -151,7 +151,7 @@ export default {
 }
 ```
 
-#### jsAssetsFilterFunction
+#### jsAssetsFilterFunction (function)
 
 The jsAssetsFilterFunction parameter allows you to specify which JavaScript file(s) the CSS injection code should be
 added to. This is useful when using a Vite configuration that exports multiple entry points in the building process. The
@@ -194,7 +194,7 @@ export default {
 This code will add the injection code to both index.js and main.js files.
 **Be aware that if you specified multiple files that the CSS can be doubled.**
 
-#### useStrictCSP
+#### useStrictCSP (boolean)
 
 The `useStrictCSP` configuration option adds a nonce to style tags based
 on `<meta property="csp-nonce" content={{ nonce }} />`. See the following [link](https://cssinjs.org/csp/?v=v10.9.2) for
@@ -215,6 +215,13 @@ export default {
 The tag `<meta property="csp-nonce" content={{ nonce }} />` (nonce should be replaced with the value) must be present in
 your html page. The `content` value of that tag will be provided to the `nonce` property of the `style` element that
 will be injected by our default injection code.
+
+#### relativeCSSInjection (boolean)
+
+**!!! Experimental feature !!!**
+
+The default behavior of this plugin takes all the CSS code of your application directly to the entrypoint generated.
+The `relativeCSSInjection` if configured to `true` will inject the CSS code of every entrypoint to the relative importer.
 
 ## Contributing
 
