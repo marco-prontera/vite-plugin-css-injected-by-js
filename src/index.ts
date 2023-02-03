@@ -45,7 +45,10 @@ export default function cssInjectedByJsPlugin({
 
             for (const name of htmlFiles) {
                 const htmlChunk = bundle[name] as OutputAsset;
-                let replacedHtml = htmlChunk.source as string;
+                let replacedHtml =
+                    htmlChunk.source instanceof Uint8Array
+                        ? new TextDecoder().decode(htmlChunk.source)
+                        : `${htmlChunk.source}`;
 
                 cssAssets.forEach((cssName) => {
                     replacedHtml = removeLinkStyleSheets(replacedHtml, cssName);
