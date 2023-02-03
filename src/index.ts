@@ -1,7 +1,55 @@
 import { buildCSSInjectionCode, debugLog, removeLinkStyleSheets, warnLog } from './utils.js';
-import { OutputAsset, OutputChunk } from 'rollup';
-import { Plugin, ResolvedConfig } from 'vite';
-import { PluginConfiguration } from './interface';
+import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
+import type { ChunkMetadata, Plugin, ResolvedConfig } from 'vite';
+import type { PluginConfiguration } from './interface';
+
+// Allow us to be aware of the vite metadata on a rendered chunk
+// This can be removed if the peer vite version is bumped to >4.1
+declare module 'rollup' {
+    interface RenderedChunk {
+        viteMetadata: ChunkMetadata;
+    }
+}
+
+function extractCssAndDeleteFromBundle(bundle: OutputBundle, cssName: string): string {
+    const cssAsset = bundle[cssName] as OutputAsset;
+    const cssSource = cssAsset.source;
+    delete bundle[cssName];
+
+    // We treat these as strings and coerce them implicitly to strings, explicitly handle conversion
+    return cssSource instanceof Uint8Array ? new TextDecoder().decode(cssSource) : `${cssSource}`;
+}
+
+function concatCss(bundle: OutputBundle, cssAssets: string[]): string {
+    return cssAssets.reduce((previous: string, cssName: string) => {
+        return previous + extractCssAndDeleteFromBundle(bundle, cssName);
+    }, '');
+}
+
+function buildJsCssMap(
+    bundle: OutputBundle,
+    jsAssetsFilterFunction: PluginConfiguration['jsAssetsFilterFunction']
+): Record<string, string[]> {
+    const assetsWithCss: Record<string, string[]> = {};
+    const filteredBundle = jsAssetsFilterFunction
+        ? Object.fromEntries(
+              Object.entries(bundle).filter(([_key, chunk]) => isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk))
+          )
+        : bundle;
+
+    for (const key of Object.keys(filteredBundle)) {
+        const asset = bundle[key];
+        if (asset.type === 'asset' || !asset.viteMetadata || asset.viteMetadata.importedCss.size === 0) {
+            continue;
+        }
+
+        const assetStyles = assetsWithCss[key] || [];
+        assetStyles.push(...asset.viteMetadata.importedCss.values());
+        assetsWithCss[key] = assetStyles;
+    }
+
+    return assetsWithCss;
+}
 
 function getJsAssetTargets(
     bundle: OutputBundle,
@@ -41,6 +89,24 @@ function getJsAssetTargets(
     }
 
     return jsAssetTargets;
+}
+
+async function relativeCssInjection(
+    bundle: OutputBundle,
+    assetsWithCss: Record<string, string[]>,
+    buildCssCode: (css: string) => Promise<OutputChunk | null>
+): Promise<void> {
+    for (const [jsAssetName, cssAssets] of Object.entries(assetsWithCss)) {
+        // We have already filtered these chunks to be RenderedChunks
+        const jsAsset = bundle[jsAssetName] as OutputChunk;
+        const assetCss = concatCss(bundle, cssAssets);
+        const cssInjectionCode = await buildCssCode(assetCss);
+
+        const jsAssetSrc = jsAsset.code;
+        let cssInjectedSrc = cssInjectionCode ? cssInjectionCode.code : '';
+        cssInjectedSrc += jsAssetSrc;
+        jsAsset.code = cssInjectedSrc;
+    }
 }
 
 /**
@@ -102,30 +168,8 @@ export default function cssInjectedByJsPlugin({
                 );
             }
 
-            if (!relativeCSSInjection) {
-                const allCssCode = cssAssets.reduce(function extractCssCodeAndDeleteFromBundle(previousValue, cssName) {
-                    return previousValue + extractCssCode(bundle[cssName] as OutputAsset);
-                }, '');
-
-                if (allCssCode.length > 0) {
-                    globalCssToInject = allCssCode;
-                }
-            }
-
-            for (const jsAsset of jsAssetTargets) {
-                let cssToInject: string = '';
-
-                if (!relativeCSSInjection && globalCssToInject.length > 0) {
-                    cssToInject = globalCssToInject;
-                } else {
-                    // @ts-ignore
-                    const cssNamesSet: Set<string> = jsAsset.viteMetadata.importedCss;
-                    cssNamesSet.forEach(function extractCssToInject(cssName) {
-                        cssToInject += String(extractCssCode(bundle[cssName] as OutputAsset));
-                    });
-                }
-
-                const cssInjectionCode = await buildCSSInjectionCode({
+            const buildCssCode = (cssToInject: string) =>
+                buildCSSInjectionCode({
                     cssToInject: typeof preRenderCSSCode == 'function' ? preRenderCSSCode(cssToInject) : cssToInject,
                     styleId,
                     injectCode,
@@ -133,9 +177,22 @@ export default function cssInjectedByJsPlugin({
                     useStrictCSP,
                 });
 
+            if (relativeCSSInjection) {
+                const assetsWithCss = buildJsCssMap(bundle, jsAssetsFilterFunction);
+                await relativeCssInjection(bundle, assetsWithCss, buildCssCode);
+                return;
+            }
+
+            const allCssCode = concatCss(bundle, cssAssets);
+            if (allCssCode.length > 0) {
+                globalCssToInject = allCssCode;
+            }
+            const globalCssInjectionCode = await buildCssCode(globalCssToInject);
+
+            for (const jsAsset of jsAssetTargets) {
                 const appCode = jsAsset.code;
                 jsAsset.code = topExecutionPriorityFlag ? '' : appCode;
-                jsAsset.code += cssInjectionCode ? cssInjectionCode.code : '';
+                jsAsset.code += globalCssInjectionCode ? globalCssInjectionCode.code : '';
                 jsAsset.code += !topExecutionPriorityFlag ? '' : appCode;
             }
 
@@ -146,14 +203,15 @@ export default function cssInjectedByJsPlugin({
     };
 }
 
-function extractCssCode(cssAsset: OutputAsset) {
-    return typeof cssAsset.source == 'string' ? cssAsset.source.replace(/(\r\n|\n|\r)+$/gm, '') : cssAsset.source;
-}
+// Should probably be left to the compiler
+// function extractCssCode(cssAsset: OutputAsset) {
+//     return typeof cssAsset.source == 'string' ? cssAsset.source.replace(/(\r\n|\n|\r)+$/gm, '') : cssAsset.source;
+// }
 
-function isJsOutputChunk(chunk: OutputAsset | OutputChunk): boolean {
+function isJsOutputChunk(chunk: OutputAsset | OutputChunk): chunk is OutputChunk {
     return chunk.type == 'chunk' && chunk.fileName.match(/.[cm]?js$/) != null;
 }
 
-function defaultJsAssetsFilter(chunk: OutputChunk) {
+function defaultJsAssetsFilter(chunk: OutputChunk): boolean {
     return chunk.isEntry && !chunk.fileName.includes('polyfill');
 }
