@@ -3,6 +3,46 @@ import { OutputAsset, OutputChunk } from 'rollup';
 import { Plugin, ResolvedConfig } from 'vite';
 import { PluginConfiguration } from './interface';
 
+function getJsAssetTargets(
+    bundle: OutputBundle,
+    jsAssetsFilterFunction?: PluginConfiguration['jsAssetsFilterFunction']
+) {
+    const jsAssetTargets: OutputChunk[] = [];
+    if (typeof jsAssetsFilterFunction != 'function') {
+        const jsAssets = Object.keys(bundle).filter((i) => {
+            const asset = bundle[i];
+            return isJsOutputChunk(asset) && defaultJsAssetsFilter(asset);
+        });
+
+        const jsTargetFileName = jsAssets[jsAssets.length - 1];
+        if (jsAssets.length > 1) {
+            warnLog(
+                `[vite-plugin-css-injected-by-js] has identified "${jsTargetFileName}" as one of the multiple output files marked as "entry" to put the CSS injection code.` +
+                    'However, if this is not the intended file to add the CSS injection code, you can use the "jsAssetsFilterFunction" parameter to specify the desired output file (read docs).'
+            );
+            if (process.env.VITE_CSS_INJECTED_BY_JS_DEBUG) {
+                const jsAssetsStr = jsAssets.join(', ');
+                debugLog(
+                    `[vite-plugin-css-injected-by-js] identified js file targets: ${jsAssetsStr}. Selected "${jsTargetFileName}".\n`
+                );
+            }
+        }
+
+        // This should be always the root of the application
+        jsAssetTargets.push(bundle[jsTargetFileName] as OutputChunk);
+    } else {
+        const jsAssets = Object.keys(bundle).filter(
+            (i) => isJsOutputChunk(bundle[i]) && jsAssetsFilterFunction(bundle[i] as OutputChunk)
+        );
+
+        jsAssets.forEach((jsAssetKey) => {
+            jsAssetTargets.push(bundle[jsAssetKey] as OutputChunk);
+        });
+    }
+
+    return jsAssetTargets;
+}
+
 /**
  * Inject the CSS compiled with JS.
  *
@@ -23,8 +63,6 @@ export default function cssInjectedByJsPlugin({
     let config: ResolvedConfig;
 
     const topExecutionPriorityFlag = typeof topExecutionPriority == 'boolean' ? topExecutionPriority : true;
-
-    const isDebug = process.env.VITE_CSS_INJECTED_BY_JS_DEBUG;
 
     return {
         apply: 'build',
@@ -56,40 +94,7 @@ export default function cssInjectedByJsPlugin({
                 });
             }
 
-            const jsAssetsFilter =
-                typeof jsAssetsFilterFunction == 'function' ? jsAssetsFilterFunction : defaultJsAssetsFilter;
-
-            let jsAssetTargets = [];
-            if (typeof jsAssetsFilterFunction != 'function') {
-                const jsAssets = Object.keys(bundle).filter(
-                    (i) => isJsOutputChunk(bundle[i]) && defaultJsAssetsFilter(bundle[i] as OutputChunk)
-                );
-
-                const jsTargetFileName = jsAssets[jsAssets.length - 1];
-                if (jsAssets.length > 1) {
-                    warnLog(
-                        `[vite-plugin-css-injected-by-js] has identified "${jsTargetFileName}" as one of the multiple output files marked as "entry" to put the CSS injection code. However, if this is not the intended file to add the CSS injection code, you can use the "jsAssetsFilterFunction" parameter to specify the desired output file (read docs).`
-                    );
-                    if (isDebug) {
-                        debugLog(
-                            `[vite-plugin-css-injected-by-js] identified js file targets: ${jsAssets.join(
-                                ', '
-                            )}. Selected "${jsTargetFileName}".\n`
-                        );
-                    }
-                }
-
-                // This should be always the root of the application
-                jsAssetTargets.push(bundle[jsTargetFileName] as OutputChunk);
-            } else {
-                const jsAssets = Object.keys(bundle).filter(
-                    (i) => isJsOutputChunk(bundle[i]) && jsAssetsFilter(bundle[i] as OutputChunk)
-                );
-
-                jsAssets.forEach((jsAssetKey) => {
-                    jsAssetTargets.push(bundle[jsAssetKey] as OutputChunk);
-                });
-            }
+            const jsAssetTargets = getJsAssetTargets(bundle, jsAssetsFilterFunction);
 
             if (jsAssetTargets.length == 0) {
                 throw new Error(
