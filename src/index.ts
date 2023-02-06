@@ -36,8 +36,14 @@ function buildJsCssMap(
               Object.entries(bundle).filter(([_key, chunk]) => isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk))
           )
         : bundle;
+    const bundleKeys = Object.keys(filteredBundle);
+    if (bundleKeys.length === 0) {
+        throw new Error(
+            'Unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configurations.'
+        );
+    }
 
-    for (const key of Object.keys(filteredBundle)) {
+    for (const key of bundleKeys) {
         const asset = bundle[key];
         if (asset.type === 'asset' || !asset.viteMetadata || asset.viteMetadata.importedCss.size === 0) {
             continue;
