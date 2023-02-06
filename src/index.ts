@@ -1,15 +1,7 @@
 import { buildCSSInjectionCode, debugLog, removeLinkStyleSheets, warnLog } from './utils.js';
 import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
-import type { ChunkMetadata, Plugin, ResolvedConfig } from 'vite';
+import type { Plugin, ResolvedConfig } from 'vite';
 import type { PluginConfiguration } from './interface';
-
-// Allow us to be aware of the vite metadata on a rendered chunk
-// This can be removed if the peer vite version is bumped to >4.1
-declare module 'rollup' {
-    interface RenderedChunk {
-        viteMetadata: ChunkMetadata;
-    }
-}
 
 function extractCssAndDeleteFromBundle(bundle: OutputBundle, cssName: string): string {
     const cssAsset = bundle[cssName] as OutputAsset;
