@@ -3,7 +3,7 @@ import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
 import type { Plugin, ResolvedConfig } from 'vite';
 import type { PluginConfiguration } from './interface';
 
-function extractCssAndDeleteFromBundle(bundle: OutputBundle, cssName: string): string {
+export function extractCssAndDeleteFromBundle(bundle: OutputBundle, cssName: string): string {
     const cssAsset = bundle[cssName] as OutputAsset;
     const cssSource = cssAsset.source;
     delete bundle[cssName];
