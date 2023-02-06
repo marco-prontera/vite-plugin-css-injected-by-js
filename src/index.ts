@@ -210,11 +210,6 @@ export default function cssInjectedByJsPlugin({
     };
 }
 
-// Should probably be left to the compiler
-// function extractCssCode(cssAsset: OutputAsset) {
-//     return typeof cssAsset.source == 'string' ? cssAsset.source.replace(/(\r\n|\n|\r)+$/gm, '') : cssAsset.source;
-// }
-
 function isJsOutputChunk(chunk: OutputAsset | OutputChunk): chunk is OutputChunk {
     return chunk.type == 'chunk' && chunk.fileName.match(/.[cm]?js$/) != null;
 }
