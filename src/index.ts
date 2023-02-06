@@ -206,10 +206,6 @@ export default function cssInjectedByJsPlugin({
                 jsAsset.code += globalCssInjectionCode ? globalCssInjectionCode.code : '';
                 jsAsset.code += !topExecutionPriorityFlag ? '' : appCode;
             }
-
-            cssAssets.forEach(function deleteCSSOutputAssetsFromBundle(cssName) {
-                delete bundle[cssName];
-            });
         },
     };
 }
