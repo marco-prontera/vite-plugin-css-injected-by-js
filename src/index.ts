@@ -103,11 +103,13 @@ async function relativeCssInjection(
     buildCssCode: (css: string) => Promise<OutputChunk | null>
 ): Promise<void> {
     for (const [jsAssetName, cssAssets] of Object.entries(assetsWithCss)) {
-        // We have already filtered these chunks to be RenderedChunks
-        const jsAsset = bundle[jsAssetName] as OutputChunk;
+        process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
+            debugLog(`[vite-plugin-css-injected-by-js] Relative CSS: ${jsAssetName}: [${cssAssets.join(',')}]`);
         const assetCss = concatCss(bundle, cssAssets);
         const cssInjectionCode = await buildCssCode(assetCss);
 
+        // We have already filtered these chunks to be RenderedChunks
+        const jsAsset = bundle[jsAssetName] as OutputChunk;
         const jsAssetSrc = jsAsset.code;
         let cssInjectedSrc = cssInjectionCode ? cssInjectionCode.code : '';
         cssInjectedSrc += jsAssetSrc;
@@ -130,7 +132,7 @@ export default function cssInjectedByJsPlugin({
     topExecutionPriority,
     useStrictCSP,
 }: PluginConfiguration | undefined = {}): Plugin {
-    //Globally so we can add it to legacy and non-legacy bundle.
+    // Globally so we can add it to legacy and non-legacy bundle.
     let globalCssToInject: string = '';
     let config: ResolvedConfig;
 
@@ -166,14 +168,6 @@ export default function cssInjectedByJsPlugin({
                 });
             }
 
-            const jsAssetTargets = getJsAssetTargets(bundle, jsAssetsFilterFunction);
-
-            if (jsAssetTargets.length == 0) {
-                throw new Error(
-                    'Unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configurations.'
-                );
-            }
-
             const buildCssCode = (cssToInject: string) =>
                 buildCSSInjectionCode({
                     cssToInject: typeof preRenderCSSCode == 'function' ? preRenderCSSCode(cssToInject) : cssToInject,
@@ -189,6 +183,15 @@ export default function cssInjectedByJsPlugin({
                 return;
             }
 
+            const jsAssetTargets = getJsAssetTargets(bundle, jsAssetsFilterFunction);
+            if (jsAssetTargets.length == 0) {
+                throw new Error(
+                    'Unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configurations.'
+                );
+            }
+
+            process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
+                debugLog(`[vite-plugin-css-injected-by-js] Global CSS Assets: [${cssAssets.join(',')}]`);
             const allCssCode = concatCss(bundle, cssAssets);
             if (allCssCode.length > 0) {
                 globalCssToInject = allCssCode;
@@ -196,6 +199,8 @@ export default function cssInjectedByJsPlugin({
             const globalCssInjectionCode = await buildCssCode(globalCssToInject);
 
             for (const jsAsset of jsAssetTargets) {
+                process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
+                    debugLog(`[vite-plugin-css-injected-by-js] Global CSS inject: ${jsAsset.fileName}`);
                 const appCode = jsAsset.code;
                 jsAsset.code = topExecutionPriorityFlag ? '' : appCode;
                 jsAsset.code += globalCssInjectionCode ? globalCssInjectionCode.code : '';
