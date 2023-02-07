@@ -144,6 +144,22 @@ describe('css-injected-by-js', () => {
             expect(assetsMap['c.js']).toContain('c.css');
         });
 
+        // Ideally this would never happen, better safe than sorry
+        it('should skip chunks that do not contain vite metadata', () => {
+            bundle['a.js'] = generateJsChunk('a', ['a.css']);
+            bundle['c.js'] = generateJsChunk('c', ['c.css']);
+            delete (bundle['c.js'] as any)['viteMetadata'];
+
+            const assetsMap = buildJsCssMap(bundle);
+
+            expect(Object.keys(assetsMap)).toHaveLength(1);
+            expect(assetsMap['a.js']).toHaveLength(1);
+            expect(assetsMap['a.js']).toContain('a.css');
+            expect(assetsMap['b.js']).toBeUndefined();
+            // `c.js` should now be skipped as it does not contain the required metadata
+            expect(assetsMap['c.js']).toBeUndefined();
+        });
+
         it('should throw when a filter fails to find a key', () => {
             const filter: PluginConfiguration['jsAssetsFilterFunction'] = (chunk: OutputChunk) =>
                 chunk.name === 'cake-town';
