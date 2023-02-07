@@ -83,7 +83,7 @@ export function getJsAssetTargets(
     );
 }
 
-async function relativeCssInjection(
+export async function relativeCssInjection(
     bundle: OutputBundle,
     assetsWithCss: Record<string, string[]>,
     buildCssCode: (css: string) => Promise<OutputChunk | null>

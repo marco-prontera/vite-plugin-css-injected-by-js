@@ -1,7 +1,13 @@
 import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { buildJsCssMap, concatCss, extractCssAndDeleteFromBundle, getJsAssetTargets } from '../src/index';
+import {
+    buildJsCssMap,
+    concatCss,
+    extractCssAndDeleteFromBundle,
+    getJsAssetTargets,
+    relativeCssInjection,
+} from '../src/index';
 import type { PluginConfiguration } from '../src/interface';
 
 describe('css-injected-by-js', () => {
@@ -210,6 +216,53 @@ describe('css-injected-by-js', () => {
             const target = getJsAssetTargets(bundle, filter);
             expect(target).toHaveLength(1);
             expect(target[0]).toStrictEqual(bundle['a.js']);
+        });
+    });
+
+    describe('relativeCssInjection', () => {
+        async function buildCssCodeMock(css: string): Promise<OutputChunk> {
+            return {
+                code: css,
+            } as OutputChunk;
+        }
+
+        it('should inject the relevant css for a single file', async () => {
+            bundle['a.js'] = generateJsChunk('a', ['a.css']);
+
+            expect(bundle['a.js'].code).toEqual('a');
+
+            await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock);
+            expect(bundle['a.js'].code).toEqual('aa');
+        });
+
+        it('should inject the relevant css for every file', async () => {
+            bundle['a.js'] = generateJsChunk('a', ['c.css']);
+            bundle['b.js'] = generateJsChunk('b', ['a.css']);
+            bundle['c.js'] = generateJsChunk('c', ['b.css']);
+
+            expect(bundle['a.js'].code).toEqual('a');
+            expect(bundle['b.js'].code).toEqual('b');
+            expect(bundle['c.js'].code).toEqual('c');
+
+            await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock);
+            expect(bundle['a.js'].code).toEqual('ca');
+            expect(bundle['b.js'].code).toEqual('ab');
+            expect(bundle['c.js'].code).toEqual('bc');
+        });
+
+        it('should inject the relevant css for only files with css', async () => {
+            bundle['a.js'] = generateJsChunk('a', ['a.css']);
+            bundle['b.js'] = generateJsChunk('b', []);
+            bundle['c.js'] = generateJsChunk('c', ['c.css']);
+
+            expect(bundle['a.js'].code).toEqual('a');
+            expect(bundle['b.js'].code).toEqual('b');
+            expect(bundle['c.js'].code).toEqual('c');
+
+            await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock);
+            expect(bundle['a.js'].code).toEqual('aa');
+            expect(bundle['b.js'].code).toEqual('b'); // no css stitched in
+            expect(bundle['c.js'].code).toEqual('cc');
         });
     });
 });
