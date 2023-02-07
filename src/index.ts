@@ -12,7 +12,7 @@ export function extractCssAndDeleteFromBundle(bundle: OutputBundle, cssName: str
     return cssSource instanceof Uint8Array ? new TextDecoder().decode(cssSource) : `${cssSource}`;
 }
 
-function concatCss(bundle: OutputBundle, cssAssets: string[]): string {
+export function concatCss(bundle: OutputBundle, cssAssets: string[]): string {
     return cssAssets.reduce((previous: string, cssName: string) => {
         return previous + extractCssAndDeleteFromBundle(bundle, cssName);
     }, '');
