@@ -22,6 +22,7 @@ export interface PluginConfiguration extends BaseOptions {
     jsAssetsFilterFunction?: (chunk: OutputChunk) => boolean;
     preRenderCSSCode?: (cssCode: string) => string;
     relativeCSSInjection?: boolean;
+    suppressUnusedCssWarning?: boolean;
 }
 
 export interface BuildCSSInjectionConfiguration extends BaseOptions {

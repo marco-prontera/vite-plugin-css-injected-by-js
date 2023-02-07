@@ -92,7 +92,7 @@ export async function relativeCssInjection(
 ): Promise<void> {
     for (const [jsAssetName, cssAssets] of Object.entries(assetsWithCss)) {
         process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
-            debugLog(`[vite-plugin-css-injected-by-js] Relative CSS: ${jsAssetName}: [${cssAssets.join(',')}]`);
+            debugLog(`[vite-plugin-css-injected-by-js] Relative CSS: ${jsAssetName}: [ ${cssAssets.join(',')} ]`);
         const assetCss = concatCssAndDeleteFromBundle(bundle, cssAssets);
         const cssInjectionCode = await buildCssCode(assetCss);
 
@@ -117,6 +117,7 @@ export default function cssInjectedByJsPlugin({
     preRenderCSSCode,
     relativeCSSInjection,
     styleId,
+    suppressUnusedCssWarning,
     topExecutionPriority,
     useStrictCSP,
 }: PluginConfiguration | undefined = {}): Plugin {
@@ -168,6 +169,16 @@ export default function cssInjectedByJsPlugin({
             if (relativeCSSInjection) {
                 const assetsWithCss = buildJsCssMap(bundle, jsAssetsFilterFunction);
                 await relativeCssInjection(bundle, assetsWithCss, buildCssCode);
+
+                if (!suppressUnusedCssWarning) {
+                    // With all used CSS assets now being removed from the bundle, navigate any that have not been linked and output
+                    const unusedCssAssets = cssAssets.filter((cssAsset) => !!bundle[cssAsset]).join(',');
+                    unusedCssAssets.length > 0 &&
+                        warnLog(
+                            `[vite-plugin-css-injected-by-js] Some CSS assets were not included in any known JS: ${unusedCssAssets}`
+                        );
+                }
+
                 return;
             }
 
