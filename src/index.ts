@@ -3,18 +3,20 @@ import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
 import type { Plugin, ResolvedConfig } from 'vite';
 import type { PluginConfiguration } from './interface';
 
-export function extractCssAndDeleteFromBundle(bundle: OutputBundle, cssName: string): string {
+export function extractCss(bundle: OutputBundle, cssName: string): string {
     const cssAsset = bundle[cssName] as OutputAsset;
     const cssSource = cssAsset.source;
-    delete bundle[cssName];
 
     // We treat these as strings and coerce them implicitly to strings, explicitly handle conversion
     return cssSource instanceof Uint8Array ? new TextDecoder().decode(cssSource) : `${cssSource}`;
 }
 
-export function concatCss(bundle: OutputBundle, cssAssets: string[]): string {
+export function concatCssAndDeleteFromBundle(bundle: OutputBundle, cssAssets: string[]): string {
     return cssAssets.reduce((previous: string, cssName: string) => {
-        return previous + extractCssAndDeleteFromBundle(bundle, cssName);
+        const cssSource = extractCss(bundle, cssName);
+        delete bundle[cssName];
+
+        return previous + cssSource;
     }, '');
 }
 
@@ -91,7 +93,7 @@ export async function relativeCssInjection(
     for (const [jsAssetName, cssAssets] of Object.entries(assetsWithCss)) {
         process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
             debugLog(`[vite-plugin-css-injected-by-js] Relative CSS: ${jsAssetName}: [${cssAssets.join(',')}]`);
-        const assetCss = concatCss(bundle, cssAssets);
+        const assetCss = concatCssAndDeleteFromBundle(bundle, cssAssets);
         const cssInjectionCode = await buildCssCode(assetCss);
 
         // We have already filtered these chunks to be RenderedChunks
@@ -179,7 +181,7 @@ export default function cssInjectedByJsPlugin({
 
             process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
                 debugLog(`[vite-plugin-css-injected-by-js] Global CSS Assets: [${cssAssets.join(',')}]`);
-            const allCssCode = concatCss(bundle, cssAssets);
+            const allCssCode = concatCssAndDeleteFromBundle(bundle, cssAssets);
             if (allCssCode.length > 0) {
                 globalCssToInject = allCssCode;
             }

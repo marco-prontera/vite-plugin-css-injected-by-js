@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
     buildJsCssMap,
-    concatCss,
-    extractCssAndDeleteFromBundle,
+    concatCssAndDeleteFromBundle,
+    extractCss,
     getJsAssetTargets,
     relativeCssInjection,
 } from '../src/index';
@@ -59,27 +59,12 @@ describe('css-injected-by-js', () => {
         };
     });
 
-    describe('extractCssAndDeleteFromBundle', () => {
+    describe('extractCss', () => {
         it('should return the specified css source from the bundle', () => {
-            const src = extractCssAndDeleteFromBundle(bundle, 'a.css');
+            const src = extractCss(bundle, 'a.css');
 
             expect(src).toBeTypeOf('string');
             expect(src).toEqual('a');
-        });
-
-        it('should remove an extracted css asset from the bundle', () => {
-            const bundleKeys = Object.keys(bundle);
-            const bundleKeysLength = bundleKeys.length;
-            const toExtract = 'a.css';
-
-            extractCssAndDeleteFromBundle(bundle, toExtract);
-
-            const reducedBundleKeys = Object.keys(bundle);
-            expect(reducedBundleKeys).toHaveLength(bundleKeysLength - 1);
-            expect(reducedBundleKeys).not.toContain(toExtract);
-            for (const key of bundleKeys.filter((key) => key !== toExtract)) {
-                expect(bundle[key]).toBeDefined();
-            }
         });
 
         it('should return a string when the asset source contains a buffer', () => {
@@ -89,22 +74,36 @@ describe('css-injected-by-js', () => {
             } as OutputAsset;
             bundle['a.css'] = sourceEncodedAsset;
 
-            const src = extractCssAndDeleteFromBundle(bundle, 'a.css');
+            const src = extractCss(bundle, 'a.css');
 
             expect(src).toBeTypeOf('string');
             expect(src).toEqual('a');
         });
     });
 
-    describe('concatCss', () => {
+    describe('concatCssAndDeleteFromBundle', () => {
         it('should concat css sources', () => {
             const initialBundleSize = Object.keys(bundle).length;
             const toConcat = ['a.css', 'c.css'];
-            const css = concatCss(bundle, toConcat);
+            const css = concatCssAndDeleteFromBundle(bundle, toConcat);
 
             expect(css).toEqual('ac');
-            // Only assert numbers here, removal validity tested in `extractCssAndDeleteFromBundle` tests.
             expect(Object.keys(bundle)).toHaveLength(initialBundleSize - toConcat.length);
+        });
+
+        it('should remove an extracted css asset from the bundle', () => {
+            const bundleKeys = Object.keys(bundle);
+            const bundleKeysLength = bundleKeys.length;
+            const toExtract = 'a.css';
+
+            concatCssAndDeleteFromBundle(bundle, [toExtract]);
+
+            const reducedBundleKeys = Object.keys(bundle);
+            expect(reducedBundleKeys).toHaveLength(bundleKeysLength - 1);
+            expect(reducedBundleKeys).not.toContain(toExtract);
+            for (const key of bundleKeys.filter((key) => key !== toExtract)) {
+                expect(bundle[key]).toBeDefined();
+            }
         });
     });
 
