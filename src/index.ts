@@ -18,17 +18,17 @@ export function concatCss(bundle: OutputBundle, cssAssets: string[]): string {
     }, '');
 }
 
-function buildJsCssMap(
+export function buildJsCssMap(
     bundle: OutputBundle,
-    jsAssetsFilterFunction: PluginConfiguration['jsAssetsFilterFunction']
+    jsAssetsFilterFunction?: PluginConfiguration['jsAssetsFilterFunction']
 ): Record<string, string[]> {
     const assetsWithCss: Record<string, string[]> = {};
-    const filteredBundle = jsAssetsFilterFunction
-        ? Object.fromEntries(
-              Object.entries(bundle).filter(([_key, chunk]) => isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk))
-          )
-        : bundle;
-    const bundleKeys = Object.keys(filteredBundle);
+    const chunkFilter = jsAssetsFilterFunction
+        ? (chunk: OutputAsset | OutputChunk) => isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk)
+        : (chunk: OutputAsset | OutputChunk) => isJsOutputChunk(chunk);
+    const bundleKeys = Object.entries(bundle)
+        .filter(([_key, chunk]) => chunkFilter(chunk))
+        .map(([key]) => key);
     if (bundleKeys.length === 0) {
         throw new Error(
             'Unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configurations.'
