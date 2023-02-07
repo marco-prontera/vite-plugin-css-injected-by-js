@@ -1,10 +1,33 @@
 import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { buildJsCssMap, concatCss, extractCssAndDeleteFromBundle } from '../src/index';
+import { buildJsCssMap, concatCss, extractCssAndDeleteFromBundle, getJsAssetTargets } from '../src/index';
 import type { PluginConfiguration } from '../src/interface';
 
 describe('css-injected-by-js', () => {
+    function generateJsChunk(name: string, importedCss: string[]): OutputChunk {
+        return {
+            code: name,
+            dynamicImports: [],
+            exports: [],
+            facadeModuleId: null,
+            fileName: `${name}.js`,
+            implicitlyLoadedBefore: [],
+            importedBindings: {},
+            imports: [],
+            isDynamicEntry: false,
+            isEntry: false,
+            isImplicitEntry: false,
+            map: null,
+            moduleIds: [],
+            modules: {},
+            name: name,
+            referencedFiles: [],
+            type: 'chunk',
+            viteMetadata: { importedAssets: new Set(), importedCss: new Set(importedCss) },
+        };
+    }
+
     let bundle: OutputBundle;
 
     beforeEach(() => {
@@ -80,29 +103,6 @@ describe('css-injected-by-js', () => {
     });
 
     describe('buildJsCssMap', () => {
-        function generateJsChunk(name: string, importedCss: string[]): OutputChunk {
-            return {
-                code: name,
-                dynamicImports: [],
-                exports: [],
-                facadeModuleId: null,
-                fileName: `${name}.js`,
-                implicitlyLoadedBefore: [],
-                importedBindings: {},
-                imports: [],
-                isDynamicEntry: false,
-                isEntry: true,
-                isImplicitEntry: false,
-                map: null,
-                moduleIds: [],
-                modules: {},
-                name: name,
-                referencedFiles: [],
-                type: 'chunk',
-                viteMetadata: { importedAssets: new Set(), importedCss: new Set(importedCss) },
-            };
-        }
-
         it('should build a map with a JS assets', () => {
             bundle['a.js'] = generateJsChunk('a', ['a.css']);
 
@@ -167,6 +167,49 @@ describe('css-injected-by-js', () => {
             expect(() => buildJsCssMap(bundle, filter)).toThrowError(
                 'Unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configurations.'
             );
+        });
+    });
+
+    describe('getJsAssetTargets', () => {
+        it('should select the entrypoint as the target', () => {
+            bundle['a.js'] = generateJsChunk('a', ['a.css']);
+            bundle['b.js'] = generateJsChunk('b', ['b.css']);
+            bundle['b.js'].isEntry = true;
+            bundle['c.js'] = generateJsChunk('c', ['c.css']);
+
+            const target = getJsAssetTargets(bundle);
+            expect(target).toHaveLength(1);
+            expect(target[0]).toStrictEqual(bundle['b.js']);
+        });
+
+        it('should log a warning if there are multiple entrypoints, and take the last entrypoint', () => {
+            const logWarnSpy = vi.spyOn(console, 'warn');
+
+            bundle['a.js'] = generateJsChunk('a', ['a.css']);
+            bundle['a.js'].isEntry = true;
+            bundle['b.js'] = generateJsChunk('b', ['b.css']);
+            bundle['b.js'].isEntry = true;
+            bundle['c.js'] = generateJsChunk('c', ['c.css']);
+            bundle['c.js'].isEntry = true;
+
+            const target = getJsAssetTargets(bundle);
+            expect(target).toHaveLength(1);
+            expect(target[0]).toStrictEqual(bundle['c.js']);
+            expect(logWarnSpy).toHaveBeenCalledOnce();
+        });
+
+        it('should use a filter to select the target entrypoint', () => {
+            const filter: PluginConfiguration['jsAssetsFilterFunction'] = (chunk: OutputChunk) =>
+                chunk.fileName === 'a.js';
+
+            bundle['a.js'] = generateJsChunk('a', ['a.css']);
+            bundle['b.js'] = generateJsChunk('b', ['b.css']);
+            bundle['b.js'].isEntry = true;
+            bundle['c.js'] = generateJsChunk('c', ['c.css']);
+
+            const target = getJsAssetTargets(bundle, filter);
+            expect(target).toHaveLength(1);
+            expect(target[0]).toStrictEqual(bundle['a.js']);
         });
     });
 });

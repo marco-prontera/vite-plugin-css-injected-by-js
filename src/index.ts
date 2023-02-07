@@ -53,7 +53,6 @@ export function getJsAssetTargets(
     bundle: OutputBundle,
     jsAssetsFilterFunction?: PluginConfiguration['jsAssetsFilterFunction']
 ): OutputChunk[] {
-    const jsAssetTargets: OutputChunk[] = [];
     if (typeof jsAssetsFilterFunction != 'function') {
         const jsAssets = Object.keys(bundle).filter((i) => {
             const asset = bundle[i];
@@ -75,19 +74,13 @@ export function getJsAssetTargets(
         }
 
         // This should be always the root of the application
-        jsAssetTargets.push(bundle[jsTargetFileName] as OutputChunk);
-    } else {
-        const jsAssets = Object.keys(bundle).filter((i) => {
-            const chunk = bundle[i];
-            return isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk);
-        });
-
-        jsAssets.forEach((jsAssetKey) => {
-            jsAssetTargets.push(bundle[jsAssetKey] as OutputChunk);
-        });
+        return [bundle[jsTargetFileName] as OutputChunk];
     }
 
-    return jsAssetTargets;
+    // jsAssetsFilterFunction has been provided
+    return Object.values(bundle).filter(
+        (chunk): chunk is OutputChunk => isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk)
+    );
 }
 
 async function relativeCssInjection(
