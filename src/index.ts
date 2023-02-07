@@ -77,9 +77,10 @@ function getJsAssetTargets(
         // This should be always the root of the application
         jsAssetTargets.push(bundle[jsTargetFileName] as OutputChunk);
     } else {
-        const jsAssets = Object.keys(bundle).filter(
-            (i) => isJsOutputChunk(bundle[i]) && jsAssetsFilterFunction(bundle[i] as OutputChunk)
-        );
+        const jsAssets = Object.keys(bundle).filter((i) => {
+            const chunk = bundle[i];
+            return isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk);
+        });
 
         jsAssets.forEach((jsAssetKey) => {
             jsAssetTargets.push(bundle[jsAssetKey] as OutputChunk);
