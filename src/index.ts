@@ -22,7 +22,7 @@ export function buildJsCssMap(
     bundle: OutputBundle,
     jsAssetsFilterFunction?: PluginConfiguration['jsAssetsFilterFunction']
 ): Record<string, string[]> {
-    const assetsWithCss: Record<string, string[]> = {};
+    const chunksWithCss: Record<string, string[]> = {};
     const chunkFilter = jsAssetsFilterFunction
         ? (chunk: OutputAsset | OutputChunk) => isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk)
         : (chunk: OutputAsset | OutputChunk) => isJsOutputChunk(chunk);
@@ -36,23 +36,23 @@ export function buildJsCssMap(
     }
 
     for (const key of bundleKeys) {
-        const asset = bundle[key];
-        if (asset.type === 'asset' || !asset.viteMetadata || asset.viteMetadata.importedCss.size === 0) {
+        const chunk = bundle[key];
+        if (chunk.type === 'asset' || !chunk.viteMetadata || chunk.viteMetadata.importedCss.size === 0) {
             continue;
         }
 
-        const assetStyles = assetsWithCss[key] || [];
-        assetStyles.push(...asset.viteMetadata.importedCss.values());
-        assetsWithCss[key] = assetStyles;
+        const chunkStyles = chunksWithCss[key] || [];
+        chunkStyles.push(...chunk.viteMetadata.importedCss.values());
+        chunksWithCss[key] = chunkStyles;
     }
 
-    return assetsWithCss;
+    return chunksWithCss;
 }
 
-function getJsAssetTargets(
+export function getJsAssetTargets(
     bundle: OutputBundle,
     jsAssetsFilterFunction?: PluginConfiguration['jsAssetsFilterFunction']
-) {
+): OutputChunk[] {
     const jsAssetTargets: OutputChunk[] = [];
     if (typeof jsAssetsFilterFunction != 'function') {
         const jsAssets = Object.keys(bundle).filter((i) => {
@@ -176,6 +176,7 @@ export default function cssInjectedByJsPlugin({
                 return;
             }
 
+            // Non-relative / Global CSS injection path
             const jsAssetTargets = getJsAssetTargets(bundle, jsAssetsFilterFunction);
             if (jsAssetTargets.length == 0) {
                 throw new Error(
