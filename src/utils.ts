@@ -1,6 +1,6 @@
 import { build, Plugin } from 'vite';
 import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
-import type { BuildCSSInjectionConfiguration, PluginConfiguration } from './interface';
+import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginConfiguration } from './interface';
 
 interface InjectCodeOptions {
     styleId?: string;
@@ -25,7 +25,10 @@ export async function buildCSSInjectionCode({
     injectCode,
     injectCodeFunction,
     useStrictCSP,
+    buildOptions,
 }: BuildCSSInjectionConfiguration): Promise<OutputChunk | null> {
+    let { minify, target } = buildOptions;
+
     const res = await build({
         root: '',
         configFile: false,
@@ -33,8 +36,8 @@ export async function buildCSSInjectionCode({
         plugins: [injectionCSSCodePlugin({ cssToInject, styleId, injectCode, injectCodeFunction, useStrictCSP })],
         build: {
             write: false,
-            target: 'es2015',
-            minify: 'esbuild',
+            target,
+            minify,
             assetsDir: '',
             rollupOptions: {
                 input: {
@@ -59,7 +62,7 @@ function injectionCSSCodePlugin({
     injectCodeFunction,
     styleId,
     useStrictCSP,
-}: BuildCSSInjectionConfiguration): Plugin {
+}: CSSInjectionConfiguration): Plugin {
     return {
         name: 'vite:injection-css-code-plugin',
         resolveId(id: string) {
