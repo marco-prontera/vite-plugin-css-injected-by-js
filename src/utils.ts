@@ -24,6 +24,7 @@ export async function buildCSSInjectionCode({
     styleId,
     injectCode,
     injectCodeFunction,
+    target,
     useStrictCSP,
 }: BuildCSSInjectionConfiguration): Promise<OutputChunk | null> {
     const res = await build({
@@ -33,7 +34,7 @@ export async function buildCSSInjectionCode({
         plugins: [injectionCSSCodePlugin({ cssToInject, styleId, injectCode, injectCodeFunction, useStrictCSP })],
         build: {
             write: false,
-            target: 'es2015',
+            target: target,
             minify: 'esbuild',
             assetsDir: '',
             rollupOptions: {
@@ -59,7 +60,7 @@ function injectionCSSCodePlugin({
     injectCodeFunction,
     styleId,
     useStrictCSP,
-}: BuildCSSInjectionConfiguration): Plugin {
+}: Omit<BuildCSSInjectionConfiguration, 'target'>): Plugin {
     return {
         name: 'vite:injection-css-code-plugin',
         resolveId(id: string) {

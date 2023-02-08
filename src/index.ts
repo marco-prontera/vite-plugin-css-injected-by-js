@@ -70,6 +70,7 @@ export default function cssInjectedByJsPlugin({
                     styleId,
                     injectCode,
                     injectCodeFunction,
+                    target: config.build.target,
                     useStrictCSP,
                 });
 
