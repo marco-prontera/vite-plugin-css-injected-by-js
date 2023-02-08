@@ -223,6 +223,9 @@ will be injected by our default injection code.
 The default behavior of this plugin takes all the CSS code of your application directly to the entrypoint generated.
 The `relativeCSSInjection` if configured to `true` will inject the CSS code of every entrypoint to the relative importer.
 
+If a CSS code it's not injected inside some JS a warning will be showed.
+To disable this warning set `suppressUnusedCssWarning` to `true`.
+
 ## Contributing
 
 When you make changes to plugin locally, you may want to build the js from the typescript file of the plugin. 
