@@ -1,6 +1,5 @@
 import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
 import { beforeAll, beforeEach, describe, expect, it, test, vi } from 'vitest';
-
 import type { PluginConfiguration } from '../src/interface';
 import {
     buildCSSInjectionCode,
@@ -29,6 +28,7 @@ describe('utils', () => {
             const output = await buildCSSInjectionCode({
                 cssToInject: 'body { color: red; }',
                 styleId,
+                buildOptions: { minify: true, target: 'es2015' },
             });
 
             const $script = document.createElement('script');
@@ -47,10 +47,13 @@ describe('utils', () => {
 
         test('Generate JS that applies styles', async () => {
             const styleId = `style-${Date.now()}`;
-            const output = await buildCSSInjectionCode({
-                cssToInject: 'body { color: red; }',
-                styleId,
-            });
+            const output = await buildCSSInjectionCode(
+                {
+                    cssToInject: 'body { color: red; }',
+                    styleId,
+                    buildOptions: { minify: true, target: 'es2015' }
+                },
+            );
 
             const $script = document.createElement('script');
             $script.textContent = output?.code || 'throw new Error("UNCAUGHT ERROR")';
@@ -69,6 +72,7 @@ describe('utils', () => {
         test('Generate JS that applies styles, without styleId', async () => {
             const output = await buildCSSInjectionCode({
                 cssToInject: 'body { color: red; }',
+                buildOptions: { minify: true, target: 'es2015' },
             });
 
             const $script = document.createElement('script');
@@ -91,6 +95,7 @@ describe('utils', () => {
                 cssToInject: 'body { color: red; }',
                 styleId,
                 useStrictCSP: true,
+                buildOptions: { minify: true, target: 'es2015' },
             });
 
             const $script = document.createElement('script');
@@ -122,6 +127,7 @@ describe('utils', () => {
                     $style.appendChild(document.createTextNode(css));
                     document.head.appendChild($style);
                 },
+                buildOptions: { minify: true, target: 'es2015' },
             });
 
             const $script = document.createElement('script');
@@ -154,6 +160,7 @@ describe('utils', () => {
                     $style.appendChild(document.createTextNode(css));
                     document.head.appendChild($style);
                 },
+                buildOptions: { minify: true, target: 'es2015' },
             });
 
             const $script = document.createElement('script');
@@ -175,7 +182,7 @@ describe('utils', () => {
 
     describe('removeLinkStyleSheets', () => {
         test('Remove link stylesheets', async () => {
-            const htmlGenerate = (cssFileName) => `<link rel="stylesheet" href="${cssFileName}">`;
+            const htmlGenerate = (cssFileName: string) => `<link rel="stylesheet" href="${cssFileName}">`;
             const cssFileName1 = `foo.css`;
             const cssFileNameDifferent = `bar.css`;
 

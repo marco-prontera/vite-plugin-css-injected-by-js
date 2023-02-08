@@ -71,6 +71,7 @@ export default function cssInjectedByJsPlugin({
                     injectCode,
                     injectCodeFunction,
                     useStrictCSP,
+                    buildOptions: config.build
                 });
 
             if (relativeCSSInjection) {

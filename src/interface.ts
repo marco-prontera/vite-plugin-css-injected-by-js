@@ -1,6 +1,7 @@
+import type { ChunkMetadata } from 'vite';
 import type { InjectCode, InjectCodeFunction } from './utils';
 import type { OutputChunk } from 'rollup';
-import type { ChunkMetadata } from 'vite';
+import type { BuildOptions } from 'vite';
 
 // Allow us to be aware of the vite metadata on a rendered chunk
 // This can be removed if the peer vite version is bumped to >4.1
@@ -25,6 +26,10 @@ export interface PluginConfiguration extends BaseOptions {
     suppressUnusedCssWarning?: boolean;
 }
 
-export interface BuildCSSInjectionConfiguration extends BaseOptions {
+export interface CSSInjectionConfiguration extends BaseOptions {
     cssToInject: string;
+}
+
+export interface BuildCSSInjectionConfiguration extends CSSInjectionConfiguration {
+    buildOptions: BuildOptions;
 }
