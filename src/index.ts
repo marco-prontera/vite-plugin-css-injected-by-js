@@ -58,7 +58,7 @@ export default function cssInjectedByJsPlugin({
                         ? new TextDecoder().decode(htmlChunk.source)
                         : `${htmlChunk.source}`;
 
-                cssAssets.forEach((cssName) => {
+                cssAssets.forEach(function replaceLinkedStylesheetsHtml(cssName) {
                     replacedHtml = removeLinkStyleSheets(replacedHtml, cssName);
                     htmlChunk.source = replacedHtml;
                 });

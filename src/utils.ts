@@ -112,7 +112,7 @@ export function extractCss(bundle: OutputBundle, cssName: string): string {
 }
 
 export function concatCssAndDeleteFromBundle(bundle: OutputBundle, cssAssets: string[]): string {
-    return cssAssets.reduce((previous: string, cssName: string) => {
+    return cssAssets.reduce(function extractCssAndDeleteFromBundle(previous: string, cssName: string): string {
         const cssSource = extractCss(bundle, cssName);
         delete bundle[cssName];
 
@@ -126,11 +126,14 @@ export function buildJsCssMap(
 ): Record<string, string[]> {
     const chunksWithCss: Record<string, string[]> = {};
     const chunkFilter = jsAssetsFilterFunction
-        ? (chunk: OutputAsset | OutputChunk) => isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk)
-        : (chunk: OutputAsset | OutputChunk) => isJsOutputChunk(chunk);
+        ? ([_key, chunk]: [string, OutputAsset | OutputChunk]) =>
+              isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk)
+        : ([_key, chunk]: [string, OutputAsset | OutputChunk]) => isJsOutputChunk(chunk);
     const bundleKeys = Object.entries(bundle)
-        .filter(([_key, chunk]) => chunkFilter(chunk))
-        .map(([key]) => key);
+        .filter(chunkFilter)
+        .map(function extractAssetKeyFromBundleEntry([key]) {
+            return key;
+        });
     if (bundleKeys.length === 0) {
         throw new Error(
             'Unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configurations.'
