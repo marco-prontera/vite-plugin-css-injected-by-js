@@ -6,7 +6,7 @@ import {
     buildJsCssMap,
     concatCssAndDeleteFromBundle,
     extractCss,
-    getJsAssetTargets,
+    getJsTargetBundleKeys,
     relativeCssInjection,
     removeLinkStyleSheets,
 } from '../src/utils';
@@ -47,13 +47,11 @@ describe('utils', () => {
 
         test('Generate JS that applies styles', async () => {
             const styleId = `style-${Date.now()}`;
-            const output = await buildCSSInjectionCode(
-                {
-                    cssToInject: 'body { color: red; }',
-                    styleId,
-                    buildOptions: { minify: true, target: 'es2015' }
-                },
-            );
+            const output = await buildCSSInjectionCode({
+                cssToInject: 'body { color: red; }',
+                styleId,
+                buildOptions: { minify: true, target: 'es2015' },
+            });
 
             const $script = document.createElement('script');
             $script.textContent = output?.code || 'throw new Error("UNCAUGHT ERROR")';
@@ -360,16 +358,16 @@ describe('utils', () => {
             });
         });
 
-        describe('getJsAssetTargets', () => {
+        describe('getJsTargetBundleKeys', () => {
             it('should select the entrypoint as the target', () => {
                 bundle['a.js'] = generateJsChunk('a', ['a.css']);
                 bundle['b.js'] = generateJsChunk('b', ['b.css']);
                 bundle['b.js'].isEntry = true;
                 bundle['c.js'] = generateJsChunk('c', ['c.css']);
 
-                const target = getJsAssetTargets(bundle);
+                const target = getJsTargetBundleKeys(bundle);
                 expect(target).toHaveLength(1);
-                expect(target[0]).toStrictEqual(bundle['b.js']);
+                expect(target[0]).toStrictEqual('b.js');
             });
 
             it('should log a warning if there are multiple entrypoints, and take the last entrypoint', () => {
@@ -382,9 +380,9 @@ describe('utils', () => {
                 bundle['c.js'] = generateJsChunk('c', ['c.css']);
                 bundle['c.js'].isEntry = true;
 
-                const target = getJsAssetTargets(bundle);
+                const target = getJsTargetBundleKeys(bundle);
                 expect(target).toHaveLength(1);
-                expect(target[0]).toStrictEqual(bundle['c.js']);
+                expect(target[0]).toStrictEqual('c.js');
                 expect(logWarnSpy).toHaveBeenCalledOnce();
             });
 
@@ -397,9 +395,9 @@ describe('utils', () => {
                 bundle['b.js'].isEntry = true;
                 bundle['c.js'] = generateJsChunk('c', ['c.css']);
 
-                const target = getJsAssetTargets(bundle, filter);
+                const target = getJsTargetBundleKeys(bundle, filter);
                 expect(target).toHaveLength(1);
-                expect(target[0]).toStrictEqual(bundle['a.js']);
+                expect(target[0]).toStrictEqual('a.js');
             });
         });
 
@@ -415,7 +413,7 @@ describe('utils', () => {
 
                 expect(bundle['a.js'].code).toEqual('a');
 
-                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock);
+                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
                 expect(bundle['a.js'].code).toEqual('aa');
             });
 
@@ -428,7 +426,7 @@ describe('utils', () => {
                 expect(bundle['b.js'].code).toEqual('b');
                 expect(bundle['c.js'].code).toEqual('c');
 
-                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock);
+                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
                 expect(bundle['a.js'].code).toEqual('ca');
                 expect(bundle['b.js'].code).toEqual('ab');
                 expect(bundle['c.js'].code).toEqual('bc');
@@ -443,7 +441,7 @@ describe('utils', () => {
                 expect(bundle['b.js'].code).toEqual('b');
                 expect(bundle['c.js'].code).toEqual('c');
 
-                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock);
+                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
                 expect(bundle['a.js'].code).toEqual('aa');
                 expect(bundle['b.js'].code).toEqual('b'); // no css stitched in
                 expect(bundle['c.js'].code).toEqual('cc');
