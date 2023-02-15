@@ -6,7 +6,8 @@ import {
     buildJsCssMap,
     concatCssAndDeleteFromBundle,
     extractCss,
-    getJsAssetTargets,
+    getJsTargetBundleKeys,
+    globalCssInjection,
     relativeCssInjection,
     removeLinkStyleSheets,
 } from '../src/utils';
@@ -47,13 +48,11 @@ describe('utils', () => {
 
         test('Generate JS that applies styles', async () => {
             const styleId = `style-${Date.now()}`;
-            const output = await buildCSSInjectionCode(
-                {
-                    cssToInject: 'body { color: red; }',
-                    styleId,
-                    buildOptions: { minify: true, target: 'es2015' }
-                },
-            );
+            const output = await buildCSSInjectionCode({
+                cssToInject: 'body { color: red; }',
+                styleId,
+                buildOptions: { minify: true, target: 'es2015' },
+            });
 
             const $script = document.createElement('script');
             $script.textContent = output?.code || 'throw new Error("UNCAUGHT ERROR")';
@@ -196,7 +195,7 @@ describe('utils', () => {
     });
 
     describe('bundling', () => {
-        function generateJsChunk(name: string, importedCss: string[]): OutputChunk {
+        function generateJsChunk(name: string, importedCss: string[], isEntry: boolean = false): OutputChunk {
             return {
                 code: name,
                 dynamicImports: [],
@@ -207,7 +206,7 @@ describe('utils', () => {
                 importedBindings: {},
                 imports: [],
                 isDynamicEntry: false,
-                isEntry: false,
+                isEntry: isEntry,
                 isImplicitEntry: false,
                 map: null,
                 moduleIds: [],
@@ -239,6 +238,12 @@ describe('utils', () => {
                     fileName: 'c.css',
                     name: 'c',
                     source: 'c',
+                    type: 'asset',
+                },
+                'empty.css': {
+                    fileName: 'empty.css',
+                    name: 'empty',
+                    source: '',
                     type: 'asset',
                 },
             };
@@ -317,6 +322,21 @@ describe('utils', () => {
                 expect(assetsMap['c.js']).toContain('c.css');
             });
 
+            it('should build a map of multiple JS assets with shared css', () => {
+                bundle['a.js'] = generateJsChunk('a', ['a.css']);
+                bundle['c.js'] = generateJsChunk('c', ['a.css', 'c.css']);
+
+                const assetsMap = buildJsCssMap(bundle);
+
+                expect(Object.keys(assetsMap)).toHaveLength(2);
+                expect(assetsMap['a.js']).toHaveLength(1);
+                expect(assetsMap['a.js']).toContain('a.css');
+                expect(assetsMap['b.js']).toBeUndefined();
+                expect(assetsMap['c.js']).toHaveLength(2);
+                expect(assetsMap['c.js'][0]).toEqual('a.css');
+                expect(assetsMap['c.js'][1]).toEqual('c.css');
+            });
+
             it('should build a map with a customer filter', () => {
                 const filter: PluginConfiguration['jsAssetsFilterFunction'] = (chunk: OutputChunk) =>
                     chunk.fileName === 'c.js';
@@ -360,16 +380,16 @@ describe('utils', () => {
             });
         });
 
-        describe('getJsAssetTargets', () => {
+        describe('getJsTargetBundleKeys', () => {
             it('should select the entrypoint as the target', () => {
                 bundle['a.js'] = generateJsChunk('a', ['a.css']);
                 bundle['b.js'] = generateJsChunk('b', ['b.css']);
                 bundle['b.js'].isEntry = true;
                 bundle['c.js'] = generateJsChunk('c', ['c.css']);
 
-                const target = getJsAssetTargets(bundle);
+                const target = getJsTargetBundleKeys(bundle);
                 expect(target).toHaveLength(1);
-                expect(target[0]).toStrictEqual(bundle['b.js']);
+                expect(target[0]).toStrictEqual('b.js');
             });
 
             it('should log a warning if there are multiple entrypoints, and take the last entrypoint', () => {
@@ -382,9 +402,9 @@ describe('utils', () => {
                 bundle['c.js'] = generateJsChunk('c', ['c.css']);
                 bundle['c.js'].isEntry = true;
 
-                const target = getJsAssetTargets(bundle);
+                const target = getJsTargetBundleKeys(bundle);
                 expect(target).toHaveLength(1);
-                expect(target[0]).toStrictEqual(bundle['c.js']);
+                expect(target[0]).toStrictEqual('c.js');
                 expect(logWarnSpy).toHaveBeenCalledOnce();
             });
 
@@ -397,9 +417,9 @@ describe('utils', () => {
                 bundle['b.js'].isEntry = true;
                 bundle['c.js'] = generateJsChunk('c', ['c.css']);
 
-                const target = getJsAssetTargets(bundle, filter);
+                const target = getJsTargetBundleKeys(bundle, filter);
                 expect(target).toHaveLength(1);
-                expect(target[0]).toStrictEqual(bundle['a.js']);
+                expect(target[0]).toStrictEqual('a.js');
             });
         });
 
@@ -415,8 +435,17 @@ describe('utils', () => {
 
                 expect(bundle['a.js'].code).toEqual('a');
 
-                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock);
+                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
                 expect(bundle['a.js'].code).toEqual('aa');
+            });
+
+            it('should inject the relevant multiple css for a single file', async () => {
+                bundle['a.js'] = generateJsChunk('a', ['a.css', 'c.css']);
+
+                expect(bundle['a.js'].code).toEqual('a');
+
+                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
+                expect(bundle['a.js'].code).toEqual('aca');
             });
 
             it('should inject the relevant css for every file', async () => {
@@ -428,7 +457,7 @@ describe('utils', () => {
                 expect(bundle['b.js'].code).toEqual('b');
                 expect(bundle['c.js'].code).toEqual('c');
 
-                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock);
+                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
                 expect(bundle['a.js'].code).toEqual('ca');
                 expect(bundle['b.js'].code).toEqual('ab');
                 expect(bundle['c.js'].code).toEqual('bc');
@@ -443,10 +472,59 @@ describe('utils', () => {
                 expect(bundle['b.js'].code).toEqual('b');
                 expect(bundle['c.js'].code).toEqual('c');
 
-                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock);
+                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
                 expect(bundle['a.js'].code).toEqual('aa');
                 expect(bundle['b.js'].code).toEqual('b'); // no css stitched in
                 expect(bundle['c.js'].code).toEqual('cc');
+            });
+
+            it('should skip empty css injection', async () => {
+                const cssAssets = ['empty.css'];
+                bundle['a.js'] = generateJsChunk('a', cssAssets, true);
+
+                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
+
+                expect(bundle['a.js'].code).toEqual('a');
+            });
+        });
+
+        describe('globalCssInjection', () => {
+            async function buildCssCodeMock(css: string): Promise<OutputChunk> {
+                return {
+                    code: css,
+                } as OutputChunk;
+            }
+
+            it('should skip empty css injection', async () => {
+                const cssAssets = ['empty.css'];
+                bundle['a.js'] = generateJsChunk('a', cssAssets, true);
+
+                await globalCssInjection(bundle, cssAssets, buildCssCodeMock, undefined, true);
+
+                expect(bundle['a.js'].code).toEqual('a');
+            });
+
+            it('should inject all css', async () => {
+                const cssAssets = ['a.css', 'b.css', 'c.css'];
+                bundle['a.js'] = generateJsChunk('a', cssAssets, true);
+
+                await globalCssInjection(bundle, cssAssets, buildCssCodeMock, undefined, true);
+
+                expect(bundle['a.js'].code).toEqual('abca');
+            });
+
+            it('should inject all css should throw if no entry is available', async () => {
+                const cssAssets = ['a.css', 'b.css', 'c.css'];
+                bundle['a.js'] = generateJsChunk('a', cssAssets, false);
+
+                try {
+                    await globalCssInjection(bundle, cssAssets, buildCssCodeMock, undefined, true);
+                } catch (e) {
+                    // @ts-ignore
+                    expect(e.message).toEqual(
+                        'Unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configurations.'
+                    );
+                }
             });
         });
     });

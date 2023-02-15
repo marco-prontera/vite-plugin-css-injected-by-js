@@ -106,12 +106,19 @@ function defaultJsAssetsFilter(chunk: OutputChunk): boolean {
     return chunk.isEntry && !chunk.fileName.includes('polyfill');
 }
 
+// The cache must be global since execution context is different every entry
+const cssSourceCache: { [key: string]: string } = {};
 export function extractCss(bundle: OutputBundle, cssName: string): string {
     const cssAsset = bundle[cssName] as OutputAsset;
-    const cssSource = cssAsset.source;
 
-    // We treat these as strings and coerce them implicitly to strings, explicitly handle conversion
-    return cssSource instanceof Uint8Array ? new TextDecoder().decode(cssSource) : `${cssSource}`;
+    if (cssAsset !== undefined && cssAsset.source) {
+        const cssSource = cssAsset.source;
+        // We treat these as strings and coerce them implicitly to strings, explicitly handle conversion
+        cssSourceCache[cssName] =
+            cssSource instanceof Uint8Array ? new TextDecoder().decode(cssSource) : `${cssSource}`;
+    }
+
+    return cssSourceCache[cssName] ?? '';
 }
 
 export function concatCssAndDeleteFromBundle(bundle: OutputBundle, cssAssets: string[]): string {
@@ -128,15 +135,11 @@ export function buildJsCssMap(
     jsAssetsFilterFunction?: PluginConfiguration['jsAssetsFilterFunction']
 ): Record<string, string[]> {
     const chunksWithCss: Record<string, string[]> = {};
-    const chunkFilter = jsAssetsFilterFunction
-        ? ([_key, chunk]: [string, OutputAsset | OutputChunk]) =>
-              isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk)
-        : ([_key, chunk]: [string, OutputAsset | OutputChunk]) => isJsOutputChunk(chunk);
-    const bundleKeys = Object.entries(bundle)
-        .filter(chunkFilter)
-        .map(function extractAssetKeyFromBundleEntry([key]) {
-            return key;
-        });
+
+    const bundleKeys = getJsTargetBundleKeys(
+        bundle,
+        typeof jsAssetsFilterFunction == 'function' ? jsAssetsFilterFunction : () => true
+    );
     if (bundleKeys.length === 0) {
         throw new Error(
             'Unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configurations.'
@@ -157,15 +160,19 @@ export function buildJsCssMap(
     return chunksWithCss;
 }
 
-export function getJsAssetTargets(
+export function getJsTargetBundleKeys(
     bundle: OutputBundle,
     jsAssetsFilterFunction?: PluginConfiguration['jsAssetsFilterFunction']
-): OutputChunk[] {
+): string[] {
     if (typeof jsAssetsFilterFunction != 'function') {
         const jsAssets = Object.keys(bundle).filter((i) => {
             const asset = bundle[i];
             return isJsOutputChunk(asset) && defaultJsAssetsFilter(asset);
         });
+
+        if (jsAssets.length == 0) {
+            return [];
+        }
 
         const jsTargetFileName = jsAssets[jsAssets.length - 1];
         if (jsAssets.length > 1) {
@@ -182,31 +189,86 @@ export function getJsAssetTargets(
         }
 
         // This should be always the root of the application
-        return [bundle[jsTargetFileName] as OutputChunk];
+        return [jsTargetFileName];
     }
 
-    // jsAssetsFilterFunction has been provided
-    return Object.values(bundle).filter(
-        (chunk): chunk is OutputChunk => isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk)
-    );
+    const chunkFilter = ([_key, chunk]: [string, OutputAsset | OutputChunk]) =>
+        isJsOutputChunk(chunk) && jsAssetsFilterFunction(chunk);
+
+    return Object.entries(bundle)
+        .filter(chunkFilter)
+        .map(function extractAssetKeyFromBundleEntry([key]) {
+            return key;
+        });
 }
 
 export async function relativeCssInjection(
     bundle: OutputBundle,
     assetsWithCss: Record<string, string[]>,
-    buildCssCode: (css: string) => Promise<OutputChunk | null>
+    buildCssCode: (css: string) => Promise<OutputChunk | null>,
+    topExecutionPriorityFlag: boolean
 ): Promise<void> {
     for (const [jsAssetName, cssAssets] of Object.entries(assetsWithCss)) {
         process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
             debugLog(`[vite-plugin-css-injected-by-js] Relative CSS: ${jsAssetName}: [ ${cssAssets.join(',')} ]`);
         const assetCss = concatCssAndDeleteFromBundle(bundle, cssAssets);
-        const cssInjectionCode = await buildCssCode(assetCss);
+        const cssInjectionCode = assetCss.length > 0 ? (await buildCssCode(assetCss))?.code : '';
 
         // We have already filtered these chunks to be RenderedChunks
         const jsAsset = bundle[jsAssetName] as OutputChunk;
-        const jsAssetSrc = jsAsset.code;
-        let cssInjectedSrc = cssInjectionCode ? cssInjectionCode.code : '';
-        cssInjectedSrc += jsAssetSrc;
-        jsAsset.code = cssInjectedSrc;
+        jsAsset.code = buildOutputChunkWithCssInjectionCode(
+            jsAsset.code,
+            cssInjectionCode ?? '',
+            topExecutionPriorityFlag
+        );
     }
+}
+
+// Globally so we can add it to legacy and non-legacy bundle.
+let globalCssToInject = '';
+export async function globalCssInjection(
+    bundle: OutputBundle,
+    cssAssets: string[],
+    buildCssCode: (css: string) => Promise<OutputChunk | null>,
+    jsAssetsFilterFunction: PluginConfiguration['jsAssetsFilterFunction'],
+    topExecutionPriorityFlag: boolean
+) {
+    const jsTargetBundleKeys = getJsTargetBundleKeys(bundle, jsAssetsFilterFunction);
+    if (jsTargetBundleKeys.length == 0) {
+        throw new Error(
+            'Unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configurations.'
+        );
+    }
+
+    process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
+        debugLog(`[vite-plugin-css-injected-by-js] Global CSS Assets: [${cssAssets.join(',')}]`);
+    const allCssCode = concatCssAndDeleteFromBundle(bundle, cssAssets);
+    if (allCssCode.length > 0) {
+        globalCssToInject = allCssCode;
+    }
+    const globalCssInjectionCode = globalCssToInject.length > 0 ? (await buildCssCode(globalCssToInject))?.code : '';
+
+    for (const jsTargetKey of jsTargetBundleKeys) {
+        const jsAsset = bundle[jsTargetKey] as OutputChunk;
+        process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
+            debugLog(`[vite-plugin-css-injected-by-js] Global CSS inject: ${jsAsset.fileName}`);
+        jsAsset.code = buildOutputChunkWithCssInjectionCode(
+            jsAsset.code,
+            globalCssInjectionCode ?? '',
+            topExecutionPriorityFlag
+        );
+    }
+}
+
+export function buildOutputChunkWithCssInjectionCode(
+    jsAssetCode: string,
+    cssInjectionCode: string,
+    topExecutionPriorityFlag: boolean
+): string {
+    const appCode = jsAssetCode.replace(/\/\*.*empty css.*\*\//, '');
+    jsAssetCode = topExecutionPriorityFlag ? '' : appCode;
+    jsAssetCode += cssInjectionCode;
+    jsAssetCode += !topExecutionPriorityFlag ? '' : appCode;
+
+    return jsAssetCode;
 }
