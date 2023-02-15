@@ -171,6 +171,10 @@ export function getJsTargetBundleKeys(
             return isJsOutputChunk(asset) && defaultJsAssetsFilter(asset);
         });
 
+        if (jsAssets.length == 0) {
+            return [];
+        }
+
         const jsTargetFileName = jsAssets[jsAssets.length - 1];
         if (jsAssets.length > 1) {
             warnLog(
