@@ -154,8 +154,7 @@ export function buildJsCssMap(
 
         const chunkStyles = chunksWithCss[key] || [];
         chunkStyles.push(...chunk.viteMetadata.importedCss.values());
-        // .reverse() required to fix the imports order
-        chunksWithCss[key] = chunkStyles.reverse();
+        chunksWithCss[key] = chunkStyles;
     }
 
     return chunksWithCss;

@@ -322,7 +322,7 @@ describe('utils', () => {
                 expect(assetsMap['c.js']).toContain('c.css');
             });
 
-            it('should build a map of multiple JS assets with shared css should reverse css imports', () => {
+            it('should build a map of multiple JS assets with shared css', () => {
                 bundle['a.js'] = generateJsChunk('a', ['a.css']);
                 bundle['c.js'] = generateJsChunk('c', ['a.css', 'c.css']);
 
@@ -333,8 +333,8 @@ describe('utils', () => {
                 expect(assetsMap['a.js']).toContain('a.css');
                 expect(assetsMap['b.js']).toBeUndefined();
                 expect(assetsMap['c.js']).toHaveLength(2);
-                expect(assetsMap['c.js'][0]).toEqual('c.css');
-                expect(assetsMap['c.js'][1]).toEqual('a.css');
+                expect(assetsMap['c.js'][0]).toEqual('a.css');
+                expect(assetsMap['c.js'][1]).toEqual('c.css');
             });
 
             it('should build a map with a customer filter', () => {
@@ -445,7 +445,7 @@ describe('utils', () => {
                 expect(bundle['a.js'].code).toEqual('a');
 
                 await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
-                expect(bundle['a.js'].code).toEqual('caa');
+                expect(bundle['a.js'].code).toEqual('aca');
             });
 
             it('should inject the relevant css for every file', async () => {
