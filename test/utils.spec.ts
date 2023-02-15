@@ -7,6 +7,7 @@ import {
     concatCssAndDeleteFromBundle,
     extractCss,
     getJsTargetBundleKeys,
+    globalCssInjection,
     relativeCssInjection,
     removeLinkStyleSheets,
 } from '../src/utils';
@@ -194,7 +195,7 @@ describe('utils', () => {
     });
 
     describe('bundling', () => {
-        function generateJsChunk(name: string, importedCss: string[]): OutputChunk {
+        function generateJsChunk(name: string, importedCss: string[], isEntry: boolean = false): OutputChunk {
             return {
                 code: name,
                 dynamicImports: [],
@@ -205,7 +206,7 @@ describe('utils', () => {
                 importedBindings: {},
                 imports: [],
                 isDynamicEntry: false,
-                isEntry: false,
+                isEntry: isEntry,
                 isImplicitEntry: false,
                 map: null,
                 moduleIds: [],
@@ -237,6 +238,12 @@ describe('utils', () => {
                     fileName: 'c.css',
                     name: 'c',
                     source: 'c',
+                    type: 'asset',
+                },
+                'empty.css': {
+                    fileName: 'empty.css',
+                    name: 'empty',
+                    source: '',
                     type: 'asset',
                 },
             };
@@ -313,6 +320,21 @@ describe('utils', () => {
                 expect(assetsMap['b.js']).toBeUndefined();
                 expect(assetsMap['c.js']).toHaveLength(1);
                 expect(assetsMap['c.js']).toContain('c.css');
+            });
+
+            it('should build a map of multiple JS assets with shared css should reverse css imports', () => {
+                bundle['a.js'] = generateJsChunk('a', ['a.css']);
+                bundle['c.js'] = generateJsChunk('c', ['a.css', 'c.css']);
+
+                const assetsMap = buildJsCssMap(bundle);
+
+                expect(Object.keys(assetsMap)).toHaveLength(2);
+                expect(assetsMap['a.js']).toHaveLength(1);
+                expect(assetsMap['a.js']).toContain('a.css');
+                expect(assetsMap['b.js']).toBeUndefined();
+                expect(assetsMap['c.js']).toHaveLength(2);
+                expect(assetsMap['c.js'][0]).toEqual('c.css');
+                expect(assetsMap['c.js'][1]).toEqual('a.css');
             });
 
             it('should build a map with a customer filter', () => {
@@ -417,6 +439,15 @@ describe('utils', () => {
                 expect(bundle['a.js'].code).toEqual('aa');
             });
 
+            it('should inject the relevant multiple css for a single file', async () => {
+                bundle['a.js'] = generateJsChunk('a', ['a.css', 'c.css']);
+
+                expect(bundle['a.js'].code).toEqual('a');
+
+                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
+                expect(bundle['a.js'].code).toEqual('caa');
+            });
+
             it('should inject the relevant css for every file', async () => {
                 bundle['a.js'] = generateJsChunk('a', ['c.css']);
                 bundle['b.js'] = generateJsChunk('b', ['a.css']);
@@ -445,6 +476,55 @@ describe('utils', () => {
                 expect(bundle['a.js'].code).toEqual('aa');
                 expect(bundle['b.js'].code).toEqual('b'); // no css stitched in
                 expect(bundle['c.js'].code).toEqual('cc');
+            });
+
+            it('should skip empty css injection', async () => {
+                const cssAssets = ['empty.css'];
+                bundle['a.js'] = generateJsChunk('a', cssAssets, true);
+
+                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
+
+                expect(bundle['a.js'].code).toEqual('a');
+            });
+        });
+
+        describe('globalCssInjection', () => {
+            async function buildCssCodeMock(css: string): Promise<OutputChunk> {
+                return {
+                    code: css,
+                } as OutputChunk;
+            }
+
+            it('should skip empty css injection', async () => {
+                const cssAssets = ['empty.css'];
+                bundle['a.js'] = generateJsChunk('a', cssAssets, true);
+
+                await globalCssInjection(bundle, cssAssets, buildCssCodeMock, undefined, true);
+
+                expect(bundle['a.js'].code).toEqual('a');
+            });
+
+            it('should inject all css', async () => {
+                const cssAssets = ['a.css', 'b.css', 'c.css'];
+                bundle['a.js'] = generateJsChunk('a', cssAssets, true);
+
+                await globalCssInjection(bundle, cssAssets, buildCssCodeMock, undefined, true);
+
+                expect(bundle['a.js'].code).toEqual('abca');
+            });
+
+            it('should inject all css should throw if no entry is available', async () => {
+                const cssAssets = ['a.css', 'b.css', 'c.css'];
+                bundle['a.js'] = generateJsChunk('a', cssAssets, false);
+
+                try {
+                    await globalCssInjection(bundle, cssAssets, buildCssCodeMock, undefined, true);
+                } catch (e) {
+                    // @ts-ignore
+                    expect(e.message).toEqual(
+                        'Unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configurations.'
+                    );
+                }
             });
         });
     });
