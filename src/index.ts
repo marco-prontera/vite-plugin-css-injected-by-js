@@ -70,9 +70,7 @@ export default function cssInjectedByJsPlugin({
                 });
 
             const cssAssetsFilter = (asset: OutputAsset): boolean => {
-                return typeof cssAssetsFilterFunction == 'function' && !relativeCSSInjection
-                    ? cssAssetsFilterFunction(asset)
-                    : true;
+                return typeof cssAssetsFilterFunction == 'function' ? cssAssetsFilterFunction(asset) : true;
             };
 
             const cssAssets = Object.keys(bundle).filter(

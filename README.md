@@ -220,7 +220,7 @@ will be injected by our default injection code.
 
 The `cssAssetsFilterFunction` parameter allows you to specify a filter function that will enable you to exclude some output css assets.
 
-**This option is not allowed when `relativeCSSInjection` is enabled.**
+**This option is not applied to `relativeCSSInjection` logic.**
 
 Here is an example of how to use the `cssAssetsFilterFunction`:
 
