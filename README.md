@@ -36,8 +36,8 @@ Below you can find all configuration parameters available.
 
 #### topExecutionPriority (boolean)
 
-The default behavior adds the injection of CSS before your bundle code. If you provide ```topExecutionPriority``` equal
-to: ```false```  the code of injection will be added after the bundle code. This is an example:
+The default behavior adds the injection of CSS before your bundle code. If you provide `topExecutionPriority` equal
+to: `false`  the code of injection will be added after the bundle code. This is an example:
 
 ```ts
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
@@ -75,7 +75,7 @@ The output injected into the DOM will look like this example:
 
 #### preRenderCSSCode (function)
 
-You can use the preRenderCSSCode parameter to make specific changes to your CSS before it is printed in the output JS
+You can use the `preRenderCSSCode` parameter to make specific changes to your CSS before it is printed in the output JS
 file. This parameter takes the CSS code extracted from the build process and allows you to return the modified CSS code
 to be used within the injection code.
 
@@ -153,12 +153,12 @@ export default {
 
 #### jsAssetsFilterFunction (function)
 
-The jsAssetsFilterFunction parameter allows you to specify which JavaScript file(s) the CSS injection code should be
+The `jsAssetsFilterFunction` parameter allows you to specify which JavaScript file(s) the CSS injection code should be
 added to. This is useful when using a Vite configuration that exports multiple entry points in the building process. The
 function takes in an OutputChunk object and should return true for the file(s) you wish to use as the host of the CSS
 injection. If multiple files are specified, the CSS injection code will be added to all files returned as true.
 
-Here is an example of how to use the jsAssetsFilterFunction:
+Here is an example of how to use the `jsAssetsFilterFunction`:
 
 ```javascript
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
@@ -174,7 +174,7 @@ export default {
 }
 ```
 
-In this example, the CSS injection code will only be added to the index.js file. If you wish to add the code to multiple
+In this example, the CSS injection code will only be added to the `index.js` file. If you wish to add the code to multiple
 files, you can specify them in the function:
 
 ```javascript
@@ -215,6 +215,28 @@ export default {
 The tag `<meta property="csp-nonce" content={{ nonce }} />` (nonce should be replaced with the value) must be present in
 your html page. The `content` value of that tag will be provided to the `nonce` property of the `style` element that
 will be injected by our default injection code.
+
+#### cssAssetsFilterFunction (function)
+
+The `cssAssetsFilterFunction` parameter allows you to specify a filter function that will enable you to exclude some output css assets.
+
+**This option is not applied to `relativeCSSInjection` logic.**
+
+Here is an example of how to use the `cssAssetsFilterFunction`:
+
+```javascript
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default {
+    plugins: [
+        cssInjectedByJsPlugin({
+            cssAssetsFilterFunction: function customCssAssetsFilterFunction(outputAsset) {
+                return outputAsset.fileName == 'font.css';
+            }
+        }),
+    ]
+}
+```
 
 #### relativeCSSInjection (boolean)
 

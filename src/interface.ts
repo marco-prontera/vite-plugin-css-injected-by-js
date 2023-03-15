@@ -1,6 +1,6 @@
 import type { ChunkMetadata } from 'vite';
 import type { InjectCode, InjectCodeFunction } from './utils';
-import type { OutputChunk } from 'rollup';
+import type { OutputAsset, OutputChunk } from 'rollup';
 import type { BuildOptions } from 'vite';
 
 // Allow us to be aware of the vite metadata on a rendered chunk
@@ -20,6 +20,7 @@ export interface BaseOptions {
 }
 
 export interface PluginConfiguration extends BaseOptions {
+    cssAssetsFilterFunction?: (chunk: OutputAsset) => boolean;
     jsAssetsFilterFunction?: (chunk: OutputChunk) => boolean;
     preRenderCSSCode?: (cssCode: string) => string;
     relativeCSSInjection?: boolean;

@@ -16,6 +16,7 @@ import type { PluginConfiguration } from './interface';
  * @return {Plugin}
  */
 export default function cssInjectedByJsPlugin({
+    cssAssetsFilterFunction,
     injectCode,
     injectCodeFunction,
     jsAssetsFilterFunction,
@@ -68,8 +69,15 @@ export default function cssInjectedByJsPlugin({
                     buildOptions: config.build,
                 });
 
+            const cssAssetsFilter = (asset: OutputAsset): boolean => {
+                return typeof cssAssetsFilterFunction == 'function' ? cssAssetsFilterFunction(asset) : true;
+            };
+
             const cssAssets = Object.keys(bundle).filter(
-                (i) => bundle[i].type == 'asset' && bundle[i].fileName.endsWith('.css')
+                (i) =>
+                    bundle[i].type == 'asset' &&
+                    bundle[i].fileName.endsWith('.css') &&
+                    cssAssetsFilter(bundle[i] as OutputAsset)
             );
 
             let unusedCssAssets: string[] = [];
