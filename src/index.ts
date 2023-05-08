@@ -1,6 +1,7 @@
 import {
     buildCSSInjectionCode,
     buildJsCssMap,
+    clearImportedCssViteMetadataFromBundle,
     globalCssInjection,
     relativeCssInjection,
     removeLinkStyleSheets,
@@ -103,6 +104,8 @@ export default function cssInjectedByJsPlugin({
                     topExecutionPriorityFlag
                 );
             }
+
+            clearImportedCssViteMetadataFromBundle(bundle, unusedCssAssets);
 
             const htmlFiles = Object.keys(bundle).filter((i) => i.endsWith('.html'));
             for (const name of htmlFiles) {

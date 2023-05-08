@@ -4,6 +4,7 @@ import type { PluginConfiguration } from '../src/interface';
 import {
     buildCSSInjectionCode,
     buildJsCssMap,
+    clearImportedCssViteMetadataFromBundle,
     concatCssAndDeleteFromBundle,
     extractCss,
     getJsTargetBundleKeys,
@@ -525,6 +526,37 @@ describe('utils', () => {
                         'Unable to locate the JavaScript asset for adding the CSS injection code. It is recommended to review your configurations.'
                     );
                 }
+            });
+        });
+
+        describe('manifest.json clear viteMetadata', () => {
+            it('should not remove ununsedCssAssets', () => {
+                const bundle = {
+                    'chunk-1.js': generateJsChunk('style', ['style.css']),
+                    'chunk-2.js': generateJsChunk('style', ['style.css']),
+                };
+                const unusedCssAssets = ['style.css'];
+
+                clearImportedCssViteMetadataFromBundle(bundle, unusedCssAssets);
+
+                const chunk1 = bundle['chunk-1.js'] as OutputChunk;
+                const chunk2 = bundle['chunk-2.js'] as OutputChunk;
+                expect(chunk1.viteMetadata.importedCss.size).toBe(1);
+                expect(chunk2.viteMetadata.importedCss.size).toBe(1);
+            });
+
+            it('should remove all importedCss', () => {
+                const bundle: OutputBundle = {
+                    'chunk-1.js': generateJsChunk('style', ['style.css', 'style1.css', 'style2.css']),
+                    'chunk-2.js': generateJsChunk('style', ['style.css']),
+                };
+                const unusedCssAssets: string[] = [];
+
+                clearImportedCssViteMetadataFromBundle(bundle, unusedCssAssets);
+                const chunk1 = bundle['chunk-1.js'] as OutputChunk;
+                const chunk2 = bundle['chunk-2.js'] as OutputChunk;
+                expect(chunk1.viteMetadata.importedCss.size).toBe(0);
+                expect(chunk2.viteMetadata.importedCss.size).toBe(0);
             });
         });
     });

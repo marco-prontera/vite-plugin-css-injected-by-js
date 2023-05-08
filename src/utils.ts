@@ -272,3 +272,18 @@ export function buildOutputChunkWithCssInjectionCode(
 
     return jsAssetCode;
 }
+
+export function clearImportedCssViteMetadataFromBundle(bundle: OutputBundle, unusedCssAssets: string[]): void {
+    // Required to exclude removed files from manifest.json
+    for (const key in bundle) {
+        const chunk = bundle[key] as OutputChunk;
+        if (chunk.viteMetadata && chunk.viteMetadata.importedCss.size > 0) {
+            const importedCssFileNames = chunk.viteMetadata.importedCss;
+            importedCssFileNames.forEach((importedCssFileName) => {
+                if (!unusedCssAssets.includes(importedCssFileName)) {
+                    chunk.viteMetadata.importedCss = new Set();
+                }
+            });
+        }
+    }
+}
