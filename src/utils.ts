@@ -281,7 +281,7 @@ export function clearImportedCssViteMetadataFromBundle(bundle: OutputBundle, unu
             const importedCssFileNames = chunk.viteMetadata.importedCss;
             importedCssFileNames.forEach((importedCssFileName) => {
                 if (!unusedCssAssets.includes(importedCssFileName)) {
-                    chunk.viteMetadata.importedCss = new Set();
+                    chunk.viteMetadata!.importedCss = new Set();
                 }
             });
         }

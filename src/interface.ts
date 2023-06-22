@@ -7,7 +7,7 @@ import type { BuildOptions } from 'vite';
 // This can be removed if the peer vite version is bumped to >4.1
 declare module 'rollup' {
     interface RenderedChunk {
-        viteMetadata: ChunkMetadata;
+        viteMetadata?: ChunkMetadata;
     }
 }
 
