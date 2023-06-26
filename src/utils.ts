@@ -280,7 +280,7 @@ export function clearImportedCssViteMetadataFromBundle(bundle: OutputBundle, unu
         if (chunk.viteMetadata && chunk.viteMetadata.importedCss.size > 0) {
             const importedCssFileNames = chunk.viteMetadata.importedCss;
             importedCssFileNames.forEach((importedCssFileName) => {
-                if (!unusedCssAssets.includes(importedCssFileName)) {
+                if (!unusedCssAssets.includes(importedCssFileName) && chunk.viteMetadata) {
                     chunk.viteMetadata.importedCss = new Set();
                 }
             });
