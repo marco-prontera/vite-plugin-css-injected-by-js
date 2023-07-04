@@ -224,14 +224,14 @@ export async function relativeCssInjection(
     }
 }
 
-// Globally so we can add it to legacy and non-legacy bundle.
-let globalCssToInject = '';
+
 export async function globalCssInjection(
     bundle: OutputBundle,
     cssAssets: string[],
     buildCssCode: (css: string) => Promise<OutputChunk | null>,
     jsAssetsFilterFunction: PluginConfiguration['jsAssetsFilterFunction'],
-    topExecutionPriorityFlag: boolean
+    topExecutionPriorityFlag: boolean,
+    globalCssToInject: string
 ) {
     const jsTargetBundleKeys = getJsTargetBundleKeys(bundle, jsAssetsFilterFunction);
     if (jsTargetBundleKeys.length == 0) {
@@ -245,6 +245,8 @@ export async function globalCssInjection(
     const allCssCode = concatCssAndDeleteFromBundle(bundle, cssAssets);
     if (allCssCode.length > 0) {
         globalCssToInject = allCssCode;
+    } else {
+        globalCssToInject = ''
     }
     const globalCssInjectionCode = globalCssToInject.length > 0 ? (await buildCssCode(globalCssToInject))?.code : '';
 
@@ -258,6 +260,8 @@ export async function globalCssInjection(
             topExecutionPriorityFlag
         );
     }
+
+    return globalCssToInject
 }
 
 export function buildOutputChunkWithCssInjectionCode(
