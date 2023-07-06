@@ -99,7 +99,7 @@ export function debugLog(msg: string) {
 }
 
 function isJsOutputChunk(chunk: OutputAsset | OutputChunk): chunk is OutputChunk {
-    return chunk.type == 'chunk' && chunk.fileName.match(/.[cm]?js$/) != null;
+    return chunk.type == 'chunk' && chunk.fileName.match(/.[cm]?js(?:\?.+)?$/) != null;
 }
 
 function defaultJsAssetsFilter(chunk: OutputChunk): boolean {
