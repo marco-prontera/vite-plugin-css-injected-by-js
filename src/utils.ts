@@ -224,8 +224,6 @@ export async function relativeCssInjection(
     }
 }
 
-// Globally so we can add it to legacy and non-legacy bundle.
-let globalCssToInject = '';
 export async function globalCssInjection(
     bundle: OutputBundle,
     cssAssets: string[],
@@ -243,10 +241,7 @@ export async function globalCssInjection(
     process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
         debugLog(`[vite-plugin-css-injected-by-js] Global CSS Assets: [${cssAssets.join(',')}]`);
     const allCssCode = concatCssAndDeleteFromBundle(bundle, cssAssets);
-    if (allCssCode.length > 0) {
-        globalCssToInject = allCssCode;
-    }
-    const globalCssInjectionCode = globalCssToInject.length > 0 ? (await buildCssCode(globalCssToInject))?.code : '';
+    const cssInjectionCode = allCssCode.length > 0 ? (await buildCssCode(allCssCode))?.code : '';
 
     for (const jsTargetKey of jsTargetBundleKeys) {
         const jsAsset = bundle[jsTargetKey] as OutputChunk;
@@ -254,7 +249,7 @@ export async function globalCssInjection(
             debugLog(`[vite-plugin-css-injected-by-js] Global CSS inject: ${jsAsset.fileName}`);
         jsAsset.code = buildOutputChunkWithCssInjectionCode(
             jsAsset.code,
-            globalCssInjectionCode ?? '',
+            cssInjectionCode ?? '',
             topExecutionPriorityFlag
         );
     }
