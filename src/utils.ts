@@ -267,7 +267,6 @@ export async function globalCssInjection(
                 globalCSSCodeEntryCache.clear();
             }
             previousFacadeModuleId = jsAsset.facadeModuleId;
-            // @ts-ignore
             globalCSSCodeEntryCache.set(jsAsset.facadeModuleId, cssInjectionCode);
         }
         if (
