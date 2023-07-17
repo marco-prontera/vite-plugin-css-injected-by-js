@@ -249,6 +249,9 @@ _This feature is based on information provided by Vite. Since we can't control h
 The default behavior of this plugin takes all the CSS code of your application directly to the entrypoint generated.
 The `relativeCSSInjection` if configured to `true` will inject the CSS code of every entrypoint to the relative importer.
 
+**Set this option to `true` if you are using the multiple entry point option of Rollup.**
+_Future release can have an advanced behavior where this options will be configured to true automatically by sniffing user configurations._
+
 If a CSS code it's not injected inside some JS a warning will be showed.
 To disable this warning set `suppressUnusedCssWarning` to `true`.
 
