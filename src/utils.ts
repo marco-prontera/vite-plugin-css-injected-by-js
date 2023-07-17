@@ -108,6 +108,7 @@ function defaultJsAssetsFilter(chunk: OutputChunk): boolean {
 
 // The cache must be global since execution context is different every entry
 const cssSourceCache: { [key: string]: string } = {};
+
 export function extractCss(bundle: OutputBundle, cssName: string): string {
     const cssAsset = bundle[cssName] as OutputAsset;
 
@@ -224,6 +225,9 @@ export async function relativeCssInjection(
     }
 }
 
+const globalCSSCodeEntryCache = new Map();
+let previousFacadeModuleId = '';
+
 export async function globalCssInjection(
     bundle: OutputBundle,
     cssAssets: string[],
@@ -241,10 +245,40 @@ export async function globalCssInjection(
     process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
         debugLog(`[vite-plugin-css-injected-by-js] Global CSS Assets: [${cssAssets.join(',')}]`);
     const allCssCode = concatCssAndDeleteFromBundle(bundle, cssAssets);
-    const cssInjectionCode = allCssCode.length > 0 ? (await buildCssCode(allCssCode))?.code : '';
+    let cssInjectionCode: string = '';
+
+    if (allCssCode.length > 0) {
+        const cssCode = (await buildCssCode(allCssCode))?.code;
+        if (typeof cssCode == 'string') {
+            cssInjectionCode = cssCode;
+        }
+    }
 
     for (const jsTargetKey of jsTargetBundleKeys) {
         const jsAsset = bundle[jsTargetKey] as OutputChunk;
+
+        /**
+         * Since it creates the assets once sequential builds for the same entry point
+         * (for example when multiple formats of same entry point are built),
+         * we need to reuse the same CSS created the first time.
+         */
+        if (jsAsset.facadeModuleId != null && jsAsset.isEntry && cssInjectionCode != '') {
+            if (jsAsset.facadeModuleId != previousFacadeModuleId) {
+                globalCSSCodeEntryCache.clear();
+            }
+            previousFacadeModuleId = jsAsset.facadeModuleId;
+            // @ts-ignore
+            globalCSSCodeEntryCache.set(jsAsset.facadeModuleId, cssInjectionCode);
+        }
+        if (
+            cssInjectionCode == '' &&
+            jsAsset.isEntry &&
+            jsAsset.facadeModuleId != null &&
+            typeof globalCSSCodeEntryCache.get(jsAsset.facadeModuleId) == 'string'
+        ) {
+            cssInjectionCode = globalCSSCodeEntryCache.get(jsAsset.facadeModuleId);
+        }
+
         process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
             debugLog(`[vite-plugin-css-injected-by-js] Global CSS inject: ${jsAsset.fileName}`);
         jsAsset.code = buildOutputChunkWithCssInjectionCode(
