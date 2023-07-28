@@ -8,6 +8,7 @@ export interface BaseOptions {
     styleId?: string;
     topExecutionPriority?: boolean;
     useStrictCSP?: boolean;
+    relativeCSSInjection?: boolean;
 }
 
 export interface PluginConfiguration extends BaseOptions {
@@ -16,6 +17,7 @@ export interface PluginConfiguration extends BaseOptions {
     preRenderCSSCode?: (cssCode: string) => string;
     relativeCSSInjection?: boolean;
     suppressUnusedCssWarning?: boolean;
+    autoStyleId?: boolean;
 }
 
 export interface CSSInjectionConfiguration extends BaseOptions {

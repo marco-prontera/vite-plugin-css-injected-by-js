@@ -1,6 +1,7 @@
 import { build, Plugin } from 'vite';
 import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
 import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginConfiguration } from './interface';
+import { v4 as uuidv4 } from 'uuid';
 
 interface InjectCodeOptions {
     styleId?: string;
@@ -26,14 +27,24 @@ export async function buildCSSInjectionCode({
     injectCodeFunction,
     useStrictCSP,
     buildOptions,
+    relativeCSSInjection,
 }: BuildCSSInjectionConfiguration): Promise<OutputChunk | null> {
     let { minify, target } = buildOptions;
+
+    // Ensures styleId is unique when relativeCSSInjection is enabled
+    const generatedStyleId = !relativeCSSInjection ? styleId : `${styleId}-${uuidv4()}`;
 
     const res = await build({
         root: '',
         configFile: false,
         logLevel: 'error',
-        plugins: [injectionCSSCodePlugin({ cssToInject, styleId, injectCode, injectCodeFunction, useStrictCSP })],
+        plugins: [injectionCSSCodePlugin({
+            cssToInject,
+            styleId: generatedStyleId,
+            injectCode,
+            injectCodeFunction,
+            useStrictCSP
+        })],
         build: {
             write: false,
             target,
@@ -217,6 +228,7 @@ export async function relativeCssInjection(
 
         // We have already filtered these chunks to be RenderedChunks
         const jsAsset = bundle[jsAssetName] as OutputChunk;
+
         jsAsset.code = buildOutputChunkWithCssInjectionCode(
             jsAsset.code,
             cssInjectionCode ?? '',
@@ -294,11 +306,10 @@ export function buildOutputChunkWithCssInjectionCode(
     topExecutionPriorityFlag: boolean
 ): string {
     const appCode = jsAssetCode.replace(/\/\*.*empty css.*\*\//, '');
-    jsAssetCode = topExecutionPriorityFlag ? '' : appCode;
-    jsAssetCode += cssInjectionCode;
-    jsAssetCode += !topExecutionPriorityFlag ? '' : appCode;
 
-    return jsAssetCode;
+    return topExecutionPriorityFlag
+      ? `${cssInjectionCode}${appCode}` :
+      `${appCode}${cssInjectionCode}`;
 }
 
 export function clearImportedCssViteMetadataFromBundle(bundle: OutputBundle, unusedCssAssets: string[]): void {
