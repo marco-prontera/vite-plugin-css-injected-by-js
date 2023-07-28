@@ -77,6 +77,16 @@ The output injected into the DOM will look like this example:
 </head>
 ```
 
+if `relativeCSSInject` is `true`, it will append a `uuidv4()` to your `styleId`.
+
+```html
+
+<head>
+    <style id="foo-3ae23c74-216a-41fe-a5ee-bd4ee3da513f">/* Generated CSS rules */</style>
+    <style id="foo-2773afb2-34aa-4158-bfb7-4cda13013077">/* Generated CSS rules */</style>
+</head>
+```
+
 #### preRenderCSSCode (function)
 
 You can use the `preRenderCSSCode` parameter to make specific changes to your CSS before it is printed in the output JS
