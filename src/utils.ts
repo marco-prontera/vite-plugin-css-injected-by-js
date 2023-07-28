@@ -32,7 +32,7 @@ export async function buildCSSInjectionCode({
     let { minify, target } = buildOptions;
 
     // Ensures styleId is unique when relativeCSSInjection is enabled
-    const generatedStyleId = !relativeCSSInjection ? styleId : `${styleId}-${uuidv4()}`;
+    const generatedStyleId = !relativeCSSInjection ? styleId : `${styleId ? `${styleId}-` : ''}${uuidv4()}`;
 
     const res = await build({
         root: '',
