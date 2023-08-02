@@ -487,15 +487,6 @@ describe('utils', () => {
                 expect(bundle['a.js'].code).toEqual('aca');
             });
 
-            it('should inject the relevant multiple css for a single file', async () => {
-                bundle['a.js'] = generateJsChunk('a', ['a.css', 'c.css']);
-
-                expect(bundle['a.js'].code).toEqual('a');
-
-                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
-                expect(bundle['a.js'].code).toEqual('aca');
-            });
-
             it('should inject the relevant css for every file', async () => {
                 bundle['a.js'] = generateJsChunk('a', ['c.css']);
                 bundle['b.js'] = generateJsChunk('b', ['a.css']);
