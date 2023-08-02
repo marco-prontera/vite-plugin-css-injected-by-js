@@ -305,7 +305,6 @@ export function buildOutputChunkWithCssInjectionCode(
     topExecutionPriorityFlag: boolean
 ): string {
     const appCode = jsAssetCode.replace(/\/\*.*empty css.*\*\//, '');
-
     jsAssetCode = topExecutionPriorityFlag ? '' : appCode;
     jsAssetCode += cssInjectionCode;
     jsAssetCode += !topExecutionPriorityFlag ? '' : appCode;
