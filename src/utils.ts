@@ -228,7 +228,6 @@ export async function relativeCssInjection(
 
         // We have already filtered these chunks to be RenderedChunks
         const jsAsset = bundle[jsAssetName] as OutputChunk;
-
         jsAsset.code = buildOutputChunkWithCssInjectionCode(
             jsAsset.code,
             cssInjectionCode ?? '',
