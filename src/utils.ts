@@ -307,9 +307,11 @@ export function buildOutputChunkWithCssInjectionCode(
 ): string {
     const appCode = jsAssetCode.replace(/\/\*.*empty css.*\*\//, '');
 
-    return topExecutionPriorityFlag
-      ? `${cssInjectionCode}${appCode}` :
-      `${appCode}${cssInjectionCode}`;
+    jsAssetCode = topExecutionPriorityFlag ? '' : appCode;
+    jsAssetCode += cssInjectionCode;
+    jsAssetCode += !topExecutionPriorityFlag ? '' : appCode;
+
+    return jsAssetCode;
 }
 
 export function clearImportedCssViteMetadataFromBundle(bundle: OutputBundle, unusedCssAssets: string[]): void {

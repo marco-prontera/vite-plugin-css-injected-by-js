@@ -69,6 +69,44 @@ describe('utils', () => {
             expect(getComputedStyle(document.body).color).toBe('red');
         });
 
+        test('Generate JS that applies styles with relativeCSSInject styleID', async () => {
+            const styleId = `relative`;
+            const builds = await Promise.all([
+                buildCSSInjectionCode({
+                    cssToInject: 'body { color: red; }',
+                    styleId,
+                    relativeCSSInjection: true,
+                    buildOptions: { minify: true, target: 'es2015' },
+                }),
+                buildCSSInjectionCode({
+                    cssToInject: 'body { background: blue; }',
+                    styleId,
+                    relativeCSSInjection: true,
+                    buildOptions: { minify: true, target: 'es2015' },
+                })
+            ]);
+
+            builds?.map((output) => {
+                const $script = document.createElement('script');
+                $script.textContent = output?.code || 'throw new Error("UNCAUGHT ERROR")';
+                document.head.appendChild($script);
+            });
+
+            // Doesn't error
+            expect(onerror).not.toBeCalled();
+
+            // StyleId applied
+            const styles = document.head.querySelectorAll(`style[id^=${styleId}]`);
+
+            expect(styles).toHaveLength(2);
+            // Expect unique style ids
+            expect([...new Set(styles.map((style) => style.id))]).toHaveLength(2)
+
+            // Applied style!
+            expect(getComputedStyle(document.body).color).toBe('red');
+            expect(getComputedStyle(document.body).background).toBe('blue');
+        });
+
         test('Generate JS that applies styles, without styleId', async () => {
             const output = await buildCSSInjectionCode({
                 cssToInject: 'body { color: red; }',
@@ -438,6 +476,15 @@ describe('utils', () => {
 
                 await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
                 expect(bundle['a.js'].code).toEqual('aa');
+            });
+
+            it('should inject the relevant multiple css for a single file', async () => {
+                bundle['a.js'] = generateJsChunk('a', ['a.css', 'c.css']);
+
+                expect(bundle['a.js'].code).toEqual('a');
+
+                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
+                expect(bundle['a.js'].code).toEqual('aca');
             });
 
             it('should inject the relevant multiple css for a single file', async () => {
