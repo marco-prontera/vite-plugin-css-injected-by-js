@@ -3,7 +3,7 @@ import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
 import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginConfiguration } from './interface';
 
 interface InjectCodeOptions {
-    styleId?: string;
+    styleId?: string | (() => string);
     useStrictCSP?: boolean;
 }
 
@@ -29,11 +29,19 @@ export async function buildCSSInjectionCode({
 }: BuildCSSInjectionConfiguration): Promise<OutputChunk | null> {
     let { minify, target } = buildOptions;
 
+    const generatedStyleId = typeof styleId === 'function' ? styleId() : styleId;
+
     const res = await build({
         root: '',
         configFile: false,
         logLevel: 'error',
-        plugins: [injectionCSSCodePlugin({ cssToInject, styleId, injectCode, injectCodeFunction, useStrictCSP })],
+        plugins: [injectionCSSCodePlugin({
+            cssToInject,
+            styleId: generatedStyleId,
+            injectCode,
+            injectCodeFunction,
+            useStrictCSP
+        })],
         build: {
             write: false,
             target,

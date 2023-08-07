@@ -69,6 +69,42 @@ describe('utils', () => {
             expect(getComputedStyle(document.body).color).toBe('red');
         });
 
+        test('Generate JS that applies styles with callback styleID', async () => {
+            const styleId = () => `styleId-${Math.random()}`;
+            const builds = await Promise.all([
+                buildCSSInjectionCode({
+                    cssToInject: 'body { color: red; }',
+                    styleId,
+                    buildOptions: { minify: true, target: 'es2015' },
+                }),
+                buildCSSInjectionCode({
+                    cssToInject: 'body { background: blue; }',
+                    styleId,
+                    buildOptions: { minify: true, target: 'es2015' },
+                })
+            ]);
+
+            builds?.map((output) => {
+                const $script = document.createElement('script');
+                $script.textContent = output?.code || 'throw new Error("UNCAUGHT ERROR")';
+                document.head.appendChild($script);
+            });
+
+            // Doesn't error
+            expect(onerror).not.toBeCalled();
+
+            // StyleId applied
+            const styles = document.head.querySelectorAll(`style[id^=styleId-]`);
+
+            expect(styles).toHaveLength(2);
+            // Expect unique style ids
+            expect([...new Set(styles.map((style) => style.id))]).toHaveLength(2)
+
+            // Applied style!
+            expect(getComputedStyle(document.body).color).toBe('red');
+            expect(getComputedStyle(document.body).background).toBe('blue');
+        });
+
         test('Generate JS that applies styles, without styleId', async () => {
             const output = await buildCSSInjectionCode({
                 cssToInject: 'body { color: red; }',

@@ -67,7 +67,7 @@ export default function cssInjectedByJsPlugin({
                     injectCode,
                     injectCodeFunction,
                     useStrictCSP,
-                    buildOptions: config.build,
+                    buildOptions: config.build
                 });
 
             const cssAssetsFilter = (asset: OutputAsset): boolean => {

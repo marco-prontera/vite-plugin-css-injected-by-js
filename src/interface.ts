@@ -5,7 +5,7 @@ import type { BuildOptions } from 'vite';
 export interface BaseOptions {
     injectCode?: InjectCode;
     injectCodeFunction?: InjectCodeFunction;
-    styleId?: string;
+    styleId?: string | (() => string);
     topExecutionPriority?: boolean;
     useStrictCSP?: boolean;
 }
