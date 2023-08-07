@@ -53,9 +53,9 @@ export default {
 }
 ```
 
-#### styleId (string)
+#### styleId (string | function)
 
-If you provide a `string` for `styleId` param the code of injection will set the `id` attribute of the `style` element
+If you provide a `string` for `styleId` param, the code of injection will set the `id` attribute of the `style` element
 with the value of the parameter provided. This is an example:
 
 ```ts
@@ -77,13 +77,22 @@ The output injected into the DOM will look like this example:
 </head>
 ```
 
-if `relativeCSSInject` is `true`, it will append a `uuidv4()` to your `styleId`.
+If you provide a `function` for `styleId` param, it will run that function and return a string. It's especially useful if you use `relativeCSSInjection` and want unique styleIds for each file.
+
+```ts
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default {
+    plugins: [
+        cssInjectedByJsPlugin({styleId: () => `foo-${Math.random() * 100}`}),
+    ]
+}
+```
 
 ```html
-
 <head>
-    <style id="foo-3ae23c74-216a-41fe-a5ee-bd4ee3da513f">/* Generated CSS rules */</style>
-    <style id="foo-2773afb2-34aa-4158-bfb7-4cda13013077">/* Generated CSS rules */</style>
+    <style id="foo-1234">/* Generated CSS rules */</style>
+    <style id="foo-4321">/* Generated CSS rules */</style>
 </head>
 ```
 

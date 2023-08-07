@@ -1,10 +1,9 @@
 import { build, Plugin } from 'vite';
 import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
 import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginConfiguration } from './interface';
-import { v4 as uuidv4 } from 'uuid';
 
 interface InjectCodeOptions {
-    styleId?: string;
+    styleId?: string | (() => string);
     useStrictCSP?: boolean;
 }
 
@@ -27,12 +26,10 @@ export async function buildCSSInjectionCode({
     injectCodeFunction,
     useStrictCSP,
     buildOptions,
-    relativeCSSInjection,
 }: BuildCSSInjectionConfiguration): Promise<OutputChunk | null> {
     let { minify, target } = buildOptions;
 
-    // Ensures styleId is unique when relativeCSSInjection is enabled
-    const generatedStyleId = styleId && relativeCSSInjection ? `${styleId ? `${styleId}-` : ''}${uuidv4()}` : styleId ;
+    const generatedStyleId = typeof styleId === 'function' ? styleId() : styleId;
 
     const res = await build({
         root: '',

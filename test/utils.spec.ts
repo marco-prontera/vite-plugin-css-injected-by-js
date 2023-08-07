@@ -69,19 +69,17 @@ describe('utils', () => {
             expect(getComputedStyle(document.body).color).toBe('red');
         });
 
-        test('Generate JS that applies styles with relativeCSSInject styleID', async () => {
-            const styleId = `relative`;
+        test('Generate JS that applies styles with callback styleID', async () => {
+            const styleId = () => `styleId-${Math.random()}`;
             const builds = await Promise.all([
                 buildCSSInjectionCode({
                     cssToInject: 'body { color: red; }',
                     styleId,
-                    relativeCSSInjection: true,
                     buildOptions: { minify: true, target: 'es2015' },
                 }),
                 buildCSSInjectionCode({
                     cssToInject: 'body { background: blue; }',
                     styleId,
-                    relativeCSSInjection: true,
                     buildOptions: { minify: true, target: 'es2015' },
                 })
             ]);
@@ -96,7 +94,7 @@ describe('utils', () => {
             expect(onerror).not.toBeCalled();
 
             // StyleId applied
-            const styles = document.head.querySelectorAll(`style[id^=${styleId}]`);
+            const styles = document.head.querySelectorAll(`style[id^=styleId-]`);
 
             expect(styles).toHaveLength(2);
             // Expect unique style ids
