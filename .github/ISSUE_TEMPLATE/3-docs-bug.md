@@ -1,3 +1,11 @@
+--- 
+name: 📚 Documentation Issue Report
+about: Use this template to report an issue on documentation.
+title: "[Doc-bug]: Title"
+labels: []
+assignees: ''
+---
+
 # **📚 Documentation Issue Report**
 
 ## **Describe the bug**
