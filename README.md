@@ -271,8 +271,10 @@ The `relativeCSSInjection` if configured to `true` will inject the CSS code of e
 **Set this option to `true` if you are using the multiple entry point option of Rollup.**
 _Future release can have an advanced behavior where this options will be configured to true automatically by sniffing user configurations._
 
-If a CSS code it's not injected inside some JS a warning will be showed.
+If a CSS chunk is generated that's not imported by any JS chunk, a warning will be shown.
 To disable this warning set `suppressUnusedCssWarning` to `true`.
+
+**For this feature to work, `build.cssCodeSplit` must be set to `true`**
 
 ## Contributing
 
