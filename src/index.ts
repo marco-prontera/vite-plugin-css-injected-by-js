@@ -89,7 +89,7 @@ export default function cssInjectedByJsPlugin({
                 unusedCssAssets = cssAssets.filter((cssAsset) => !!bundle[cssAsset]);
                 if (!suppressUnusedCssWarning) {
                     // With all used CSS assets now being removed from the bundle, navigate any that have not been linked and output
-                    const unusedCssAssetsString = unusedCssAssets.join(',');
+                    const unusedCssAssetsString = unusedCssAssets.join(', ');
                     unusedCssAssetsString.length > 0 &&
                         warnLog(
                             `[vite-plugin-css-injected-by-js] Some CSS assets were not included in any known JS: ${unusedCssAssetsString}`
