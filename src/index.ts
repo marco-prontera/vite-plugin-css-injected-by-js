@@ -30,7 +30,7 @@ export default function cssInjectedByJsPlugin({
 }: PluginConfiguration | undefined = {}): Plugin {
     let config: ResolvedConfig;
 
-    const topExecutionPriorityFlag = typeof topExecutionPriority == 'boolean' ? topExecutionPriority : true;
+    const topExecutionPriorityFlag = typeof topExecutionPriority === 'boolean' ? topExecutionPriority : true;
 
     return {
         apply: 'build',
@@ -42,8 +42,8 @@ export default function cssInjectedByJsPlugin({
                     config.build = {};
                 }
 
-                if (relativeCSSInjection == true) {
-                    if (config.build.cssCodeSplit == false) {
+                if (relativeCSSInjection === true) {
+                    if (config.build.cssCodeSplit === false) {
                         config.build.cssCodeSplit = true;
                         warnLog(
                             `[vite-plugin-css-injected-by-js] Override of 'build.cssCodeSplit' option to true, it must be true when 'relativeCSSInjection' is enabled.`
@@ -62,7 +62,7 @@ export default function cssInjectedByJsPlugin({
 
             const buildCssCode = (cssToInject: string) =>
                 buildCSSInjectionCode({
-                    cssToInject: typeof preRenderCSSCode == 'function' ? preRenderCSSCode(cssToInject) : cssToInject,
+                    cssToInject: typeof preRenderCSSCode === 'function' ? preRenderCSSCode(cssToInject) : cssToInject,
                     styleId,
                     injectCode,
                     injectCodeFunction,
@@ -71,12 +71,12 @@ export default function cssInjectedByJsPlugin({
                 });
 
             const cssAssetsFilter = (asset: OutputAsset): boolean => {
-                return typeof cssAssetsFilterFunction == 'function' ? cssAssetsFilterFunction(asset) : true;
+                return typeof cssAssetsFilterFunction === 'function' ? cssAssetsFilterFunction(asset) : true;
             };
 
             const cssAssets = Object.keys(bundle).filter(
                 (i) =>
-                    bundle[i].type == 'asset' &&
+                    bundle[i].type === 'asset' &&
                     bundle[i].fileName.endsWith('.css') &&
                     cssAssetsFilter(bundle[i] as OutputAsset)
             );
