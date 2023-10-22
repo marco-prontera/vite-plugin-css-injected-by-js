@@ -81,7 +81,7 @@ describe('utils', () => {
                     cssToInject: 'body { background: blue; }',
                     styleId,
                     buildOptions: { minify: true, target: 'es2015' },
-                })
+                }),
             ]);
 
             builds?.map((output) => {
@@ -94,11 +94,11 @@ describe('utils', () => {
             expect(onerror).not.toBeCalled();
 
             // StyleId applied
-            const styles = document.head.querySelectorAll(`style[id^=styleId-]`);
+            const styles = [...document.head.querySelectorAll(`style[id^=styleId-]`)];
 
             expect(styles).toHaveLength(2);
             // Expect unique style ids
-            expect([...new Set(styles.map((style) => style.id))]).toHaveLength(2)
+            expect([...new Set(styles.map((style) => style.id))]).toHaveLength(2);
 
             // Applied style!
             expect(getComputedStyle(document.body).color).toBe('red');
@@ -577,8 +577,8 @@ describe('utils', () => {
 
                 const chunk1 = bundle['chunk-1.js'] as OutputChunk;
                 const chunk2 = bundle['chunk-2.js'] as OutputChunk;
-                expect(chunk1.viteMetadata.importedCss.size).toBe(1);
-                expect(chunk2.viteMetadata.importedCss.size).toBe(1);
+                expect(chunk1.viteMetadata?.importedCss.size).toBe(1);
+                expect(chunk2.viteMetadata?.importedCss.size).toBe(1);
             });
 
             it('should remove all importedCss', () => {
@@ -591,8 +591,8 @@ describe('utils', () => {
                 clearImportedCssViteMetadataFromBundle(bundle, unusedCssAssets);
                 const chunk1 = bundle['chunk-1.js'] as OutputChunk;
                 const chunk2 = bundle['chunk-2.js'] as OutputChunk;
-                expect(chunk1.viteMetadata.importedCss.size).toBe(0);
-                expect(chunk2.viteMetadata.importedCss.size).toBe(0);
+                expect(chunk1.viteMetadata?.importedCss.size).toBe(0);
+                expect(chunk2.viteMetadata?.importedCss.size).toBe(0);
             });
         });
     });
