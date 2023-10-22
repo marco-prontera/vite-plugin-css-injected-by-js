@@ -77,7 +77,7 @@ export default {
     plugins: [
         cssInjectedByJsPlugin({
             injectCode: (cssCode, options) => {
-                return `try{if(typeof document != 'undefined'){var elementStyle = document.createElement('style');elementStyle.appendChild(document.createTextNode(${cssCode}));document.head.appendChild(elementStyle);}}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`
+                return `try{if(typeof document !== 'undefined'){var elementStyle = document.createElement('style');elementStyle.appendChild(document.createTextNode(${cssCode}));document.head.appendChild(elementStyle);}}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`
             }
         }),
     ]
@@ -103,7 +103,7 @@ export default {
         cssInjectedByJsPlugin({
             injectCodeFunction: function injectCodeCustomRunTimeFunction(cssCode, options) {
                 try {
-                    if (typeof document != 'undefined') {
+                    if (typeof document !== 'undefined') {
                         var elementStyle = document.createElement('style');
                         elementStyle.appendChild(document.createTextNode(${cssCode}));
                         document.head.appendChild(elementStyle);
@@ -133,7 +133,7 @@ export default {
     plugins: [
         cssInjectedByJsPlugin({
             jsAssetsFilterFunction: function customJsAssetsfilterFunction(outputChunk) {
-                return outputChunk.fileName == 'index.js';
+                return outputChunk.fileName === 'index.js';
             }
         }),
     ]
@@ -150,7 +150,7 @@ export default {
     plugins: [
         cssInjectedByJsPlugin({
             jsAssetsFilterFunction: function customJsAssetsfilterFunction(outputChunk) {
-                return outputChunk.fileName == 'index.js' || outputChunk.fileName == 'subdir/main.js';
+                return outputChunk.fileName === 'index.js' || outputChunk.fileName === 'subdir/main.js';
             }
         }),
     ]
