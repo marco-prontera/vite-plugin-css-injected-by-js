@@ -1,3 +1,11 @@
+--- 
+name: ⚠️ Security Report
+about: Use this template to report a security vulnerability.
+title: "[Security]: Title"
+labels: []
+assignees: ''
+---
+
 <!--📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛📛
 
 Oh, hi there! 😄

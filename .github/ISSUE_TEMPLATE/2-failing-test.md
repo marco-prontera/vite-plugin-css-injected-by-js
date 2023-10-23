@@ -1,3 +1,11 @@
+--- 
+name: 💉 Failing Test
+about: Use this template to report a failed test/job.
+title: "[Fail-test]: Title"
+labels: []
+assignees: ''
+---
+
 # **💉 Failing Test**
 
 ## **Which jobs/test(s) are failing**

@@ -1,3 +1,11 @@
+--- 
+name: 🚀 Enhancement Request
+about: Use this template to introduce a new enhancement.
+title: "[Enhancement]: Title"
+labels: []
+assignees: ''
+---
+
 # **🚀 Enhancement Request**
 
 ## **Is your enhancement request related to a problem? Please describe.**

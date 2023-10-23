@@ -1,3 +1,11 @@
+--- 
+name: 🚀 Feature Request
+about: Use this template to introduce a new feature.
+title: "[Feature]: Title"
+labels: []
+assignees: ''
+---
+
 # **🚀 Feature Request**
 
 ## **Is your feature request related to a problem? Please describe.**

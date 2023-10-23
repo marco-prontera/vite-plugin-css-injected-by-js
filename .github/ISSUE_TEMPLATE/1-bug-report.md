@@ -1,3 +1,12 @@
+--- 
+name: 🐞 Bug Report
+about: Use this template to report a bug.
+title: "[Bug]: Title"
+labels: []
+assignees: ''
+---
+
+
 # **🐞 Bug Report**
 
 ## **Describe the bug**

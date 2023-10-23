@@ -3,7 +3,7 @@
 A Vite plugin that takes the CSS and adds it to the page through the JS. For those who want a single JS file.
 
 The plugin can be configured to execute the CSS injection before or after your app code, and you can also provide a
-custom id for the injected style element and other configurations that fulfill some particular cases.
+custom id for the injected style element and other configurations that fulfill some particular cases, even for libs.
 
 ## How does it work
 
@@ -38,81 +38,24 @@ export default {
 When you add the plugin, you can provide a configuration object.
 Below you can find all configuration parameters available.
 
-#### topExecutionPriority (boolean)
+#### cssAssetsFilterFunction (function)
 
-The default behavior adds the injection of CSS before your bundle code. If you provide `topExecutionPriority` equal
-to: `false`  the code of injection will be added after the bundle code. This is an example:
+The `cssAssetsFilterFunction` parameter allows you to specify a filter function that will enable you to exclude some output css assets.
 
-```ts
+**This option is not applied to `relativeCSSInjection` logic.**
+
+Here is an example of how to use the `cssAssetsFilterFunction`:
+
+```javascript
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
 export default {
     plugins: [
-        cssInjectedByJsPlugin({topExecutionPriority: false}),
-    ]
-}
-```
-
-#### styleId (string | function)
-
-If you provide a `string` for `styleId` param, the code of injection will set the `id` attribute of the `style` element
-with the value of the parameter provided. This is an example:
-
-```ts
-import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
-
-export default {
-    plugins: [
-        cssInjectedByJsPlugin({styleId: "foo"}),
-    ]
-}
-```
-
-The output injected into the DOM will look like this example:
-
-```html
-
-<head>
-    <style id="foo">/* Generated CSS rules */</style>
-</head>
-```
-
-If you provide a `function` for `styleId` param, it will run that function and return a string. It's especially useful if you use `relativeCSSInjection` and want unique styleIds for each file.
-
-```ts
-import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
-
-export default {
-    plugins: [
-        cssInjectedByJsPlugin({styleId: () => `foo-${Math.random() * 100}`}),
-    ]
-}
-```
-
-```html
-<head>
-    <style id="foo-1234">/* Generated CSS rules */</style>
-    <style id="foo-4321">/* Generated CSS rules */</style>
-</head>
-```
-
-#### preRenderCSSCode (function)
-
-You can use the `preRenderCSSCode` parameter to make specific changes to your CSS before it is printed in the output JS
-file. This parameter takes the CSS code extracted from the build process and allows you to return the modified CSS code
-to be used within the injection code.
-
-This way, you can customize the CSS code without having to write additional code that runs during the execution of your
-application.
-
-This is an example:
-
-```ts
-import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
-
-export default {
-    plugins: [
-        cssInjectedByJsPlugin({preRenderCSSCode: (cssCode) => cssCode}), // The return will be used as the CSS that will be injected during execution.
+        cssInjectedByJsPlugin({
+            cssAssetsFilterFunction: function customCssAssetsFilterFunction(outputAsset) {
+                return outputAsset.fileName == 'font.css';
+            }
+        }),
     ]
 }
 ```
@@ -217,6 +160,101 @@ export default {
 This code will add the injection code to both index.js and main.js files.
 **Be aware that if you specified multiple files that the CSS can be doubled.**
 
+
+#### preRenderCSSCode (function)
+
+You can use the `preRenderCSSCode` parameter to make specific changes to your CSS before it is printed in the output JS
+file. This parameter takes the CSS code extracted from the build process and allows you to return the modified CSS code
+to be used within the injection code.
+
+This way, you can customize the CSS code without having to write additional code that runs during the execution of your
+application.
+
+This is an example:
+
+```ts
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default {
+    plugins: [
+        cssInjectedByJsPlugin({preRenderCSSCode: (cssCode) => cssCode}), // The return will be used as the CSS that will be injected during execution.
+    ]
+}
+```
+
+#### relativeCSSInjection (boolean)
+
+_This feature is based on information provided by Vite. Since we can't control how Vite handles this information this means that there may be problems that may not be possible to fix them in this plugin._
+
+The default behavior of this plugin takes all the CSS code of your application directly to the entrypoint generated.
+The `relativeCSSInjection` if configured to `true` will inject the CSS code of every entrypoint to the relative importer.
+
+**Set this option to `true` if you are using the multiple entry point option of Rollup.**
+**For this feature to work, `build.cssCodeSplit` must be set to `true`**
+
+_Future release can have an advanced behavior where this options will be configured to true automatically by sniffing user configurations._
+
+If a CSS chunk is generated that's not imported by any JS chunk, a warning will be shown.
+To disable this warning set `suppressUnusedCssWarning` to `true`.
+
+#### styleId (string | function)
+
+If you provide a `string` for `styleId` param, the code of injection will set the `id` attribute of the `style` element
+with the value of the parameter provided. This is an example:
+
+```ts
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default {
+    plugins: [
+        cssInjectedByJsPlugin({styleId: "foo"}),
+    ]
+}
+```
+
+The output injected into the DOM will look like this example:
+
+```html
+
+<head>
+    <style id="foo">/* Generated CSS rules */</style>
+</head>
+```
+
+If you provide a `function` for `styleId` param, it will run that function and return a string. It's especially useful if you use `relativeCSSInjection` and want unique styleIds for each file.
+
+```ts
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default {
+    plugins: [
+        cssInjectedByJsPlugin({styleId: () => `foo-${Math.random() * 100}`}),
+    ]
+}
+```
+
+```html
+<head>
+    <style id="foo-1234">/* Generated CSS rules */</style>
+    <style id="foo-4321">/* Generated CSS rules */</style>
+</head>
+```
+
+#### topExecutionPriority (boolean)
+
+The default behavior adds the injection of CSS before your bundle code. If you provide `topExecutionPriority` equal
+to: `false`  the code of injection will be added after the bundle code. This is an example:
+
+```ts
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default {
+    plugins: [
+        cssInjectedByJsPlugin({topExecutionPriority: false}),
+    ]
+}
+```
+
 #### useStrictCSP (boolean)
 
 The `useStrictCSP` configuration option adds a nonce to style tags based
@@ -238,41 +276,6 @@ export default {
 The tag `<meta property="csp-nonce" content={{ nonce }} />` (nonce should be replaced with the value) must be present in
 your html page. The `content` value of that tag will be provided to the `nonce` property of the `style` element that
 will be injected by our default injection code.
-
-#### cssAssetsFilterFunction (function)
-
-The `cssAssetsFilterFunction` parameter allows you to specify a filter function that will enable you to exclude some output css assets.
-
-**This option is not applied to `relativeCSSInjection` logic.**
-
-Here is an example of how to use the `cssAssetsFilterFunction`:
-
-```javascript
-import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
-
-export default {
-    plugins: [
-        cssInjectedByJsPlugin({
-            cssAssetsFilterFunction: function customCssAssetsFilterFunction(outputAsset) {
-                return outputAsset.fileName == 'font.css';
-            }
-        }),
-    ]
-}
-```
-
-#### relativeCSSInjection (boolean)
-
-_This feature is based on information provided by Vite. Since we can't control how Vite handles this information this means that there may be problems that may not be possible to fix them in this plugin._
-
-The default behavior of this plugin takes all the CSS code of your application directly to the entrypoint generated.
-The `relativeCSSInjection` if configured to `true` will inject the CSS code of every entrypoint to the relative importer.
-
-**Set this option to `true` if you are using the multiple entry point option of Rollup.**
-_Future release can have an advanced behavior where this options will be configured to true automatically by sniffing user configurations._
-
-If a CSS code it's not injected inside some JS a warning will be showed.
-To disable this warning set `suppressUnusedCssWarning` to `true`.
 
 ## Contributing
 
