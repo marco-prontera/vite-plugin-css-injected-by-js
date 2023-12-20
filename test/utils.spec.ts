@@ -523,6 +523,14 @@ describe('utils', () => {
 
                 expect(bundle['a.js'].code).toEqual('a');
             });
+
+            it('should remove occurrences of /* empty css */ from the bundled code', async () => {
+                bundle['a.js'] = generateJsChunk('a', ['a.css']);
+                bundle['a.js'].code = `/* empty css */${bundle['a.js'].code}/* empty css     */`;
+                await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
+
+                expect(bundle['a.js'].code).toEqual('aa');
+            });
         });
 
         describe('globalCssInjection', () => {
@@ -544,6 +552,16 @@ describe('utils', () => {
             it('should inject all css', async () => {
                 const cssAssets = ['a.css', 'b.css', 'c.css'];
                 bundle['a.js'] = generateJsChunk('a', cssAssets, true);
+
+                await globalCssInjection(bundle, cssAssets, buildCssCodeMock, undefined, true);
+
+                expect(bundle['a.js'].code).toEqual('abca');
+            });
+
+            it('should remove occurrences of /* empty css */ from the bundled code', async () => {
+                const cssAssets = ['a.css', 'b.css', 'c.css'];
+                bundle['a.js'] = generateJsChunk('a', cssAssets, true);
+                bundle['a.js'].code = `/* empty css */${bundle['a.js'].code}/* empty css     */`;
 
                 await globalCssInjection(bundle, cssAssets, buildCssCodeMock, undefined, true);
 
