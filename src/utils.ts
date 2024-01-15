@@ -5,6 +5,8 @@ import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginC
 interface InjectCodeOptions {
     styleId?: string | (() => string);
     useStrictCSP?: boolean;
+    //TODO: (BC) Migrate styleId into attributes.
+    attributes?: { [key: string]: string } | undefined;
 }
 
 export type InjectCode = (cssCode: string, options: InjectCodeOptions) => string;
@@ -12,12 +14,19 @@ export type InjectCodeFunction = (cssCode: string, options: InjectCodeOptions) =
 
 const cssInjectedByJsId = '\0vite/all-css';
 
-const defaultInjectCode: InjectCode = (cssCode, { styleId, useStrictCSP }) =>
-    `try{if(typeof document != 'undefined'){var elementStyle = document.createElement('style');${
+const defaultInjectCode: InjectCode = (cssCode, { styleId, useStrictCSP, attributes }) => {
+    let attributesInjection = '';
+
+    for (const attribute in attributes) {
+        attributesInjection += `elementStyle.setAttribute('${attribute}', '${attributes[attribute]}');`;
+    }
+
+    return `try{if(typeof document != 'undefined'){var elementStyle = document.createElement('style');${
         typeof styleId == 'string' && styleId.length > 0 ? `elementStyle.id = '${styleId}';` : ''
     }${
         useStrictCSP ? `elementStyle.nonce = document.head.querySelector('meta[property=csp-nonce]')?.content;` : ''
-    }elementStyle.appendChild(document.createTextNode(${cssCode}));document.head.appendChild(elementStyle);}}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`;
+    }${attributesInjection}elementStyle.appendChild(document.createTextNode(${cssCode}));document.head.appendChild(elementStyle);}}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`;
+};
 
 export async function buildCSSInjectionCode({
     cssToInject,
@@ -35,13 +44,15 @@ export async function buildCSSInjectionCode({
         root: '',
         configFile: false,
         logLevel: 'error',
-        plugins: [injectionCSSCodePlugin({
-            cssToInject,
-            styleId: generatedStyleId,
-            injectCode,
-            injectCodeFunction,
-            useStrictCSP
-        })],
+        plugins: [
+            injectionCSSCodePlugin({
+                cssToInject,
+                styleId: generatedStyleId,
+                injectCode,
+                injectCodeFunction,
+                useStrictCSP,
+            }),
+        ],
         build: {
             write: false,
             target,
@@ -64,6 +75,20 @@ export async function buildCSSInjectionCode({
     return _cssChunk.output[0];
 }
 
+export function resolveInjectionCode(
+    cssCode: string,
+    injectCode: ((cssCode: string, options: InjectCodeOptions) => string) | undefined,
+    injectCodeFunction: ((cssCode: string, options: InjectCodeOptions) => void) | undefined,
+    { styleId, useStrictCSP, attributes }: InjectCodeOptions
+) {
+    const injectionOptions = { styleId, useStrictCSP, attributes };
+    if (injectCodeFunction) {
+        return `(${injectCodeFunction})(${cssCode}, ${JSON.stringify(injectionOptions)})`;
+    }
+    const injectFunction = injectCode || defaultInjectCode;
+    return injectFunction(cssCode, injectionOptions);
+}
+
 function injectionCSSCodePlugin({
     cssToInject,
     injectCode,
@@ -81,11 +106,7 @@ function injectionCSSCodePlugin({
         load(id: string) {
             if (id == cssInjectedByJsId) {
                 const cssCode = JSON.stringify(cssToInject.trim());
-                if (injectCodeFunction) {
-                    return `(${injectCodeFunction})(${cssCode}, ${JSON.stringify({ styleId, useStrictCSP })})`;
-                }
-                const injectFunction = injectCode || defaultInjectCode;
-                return injectFunction(cssCode, { styleId, useStrictCSP });
+                return resolveInjectionCode(cssCode, injectCode, injectCodeFunction, { styleId, useStrictCSP });
             }
         },
     };
@@ -322,4 +343,10 @@ export function clearImportedCssViteMetadataFromBundle(bundle: OutputBundle, unu
             });
         }
     }
+}
+
+export function isCSSRequest(request: string): boolean {
+    const CSS_LANGS_RE = /\.(css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|\?)/;
+
+    return CSS_LANGS_RE.test(request);
 }
