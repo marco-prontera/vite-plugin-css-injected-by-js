@@ -11,9 +11,28 @@ import {
     globalCssInjection,
     relativeCssInjection,
     removeLinkStyleSheets,
+    isCSSRequest,
 } from '../src/utils';
 
 describe('utils', () => {
+    describe('isCSSRequest', () => {
+        test('should match all extensions supported', () => {
+            const extensions = ['css', 'less', 'sass', 'scss', 'styl', 'stylus', 'pcss', 'postcss', 'sss'];
+
+            extensions.forEach((ext) => {
+                expect(isCSSRequest('/some/path.' + ext));
+            });
+        });
+
+        test('should return false when there is no supported extension', () => {
+            const extensions = ['ctss', 'ltess', 'satss', 'stcss', 'sttyl', 'stbylus', 'pcrss', 'povstcss', 'sses'];
+
+            extensions.forEach((ext) => {
+                expect(isCSSRequest('/some/path.' + ext)).toBe(false);
+            });
+        });
+    });
+
     describe('buildCSSInjectionCode', () => {
         const onerror = vi.fn();
         window.onerror = onerror;
@@ -81,7 +100,7 @@ describe('utils', () => {
                     cssToInject: 'body { background: blue; }',
                     styleId,
                     buildOptions: { minify: true, target: 'es2015' },
-                })
+                }),
             ]);
 
             builds?.map((output) => {
@@ -97,8 +116,8 @@ describe('utils', () => {
             const styles = document.head.querySelectorAll(`style[id^=styleId-]`);
 
             expect(styles).toHaveLength(2);
-            // Expect unique style ids
-            expect([...new Set(styles.map((style) => style.id))]).toHaveLength(2)
+            // @ts-ignore Expect unique style ids
+            expect([...new Set(styles.map((style: { id: any }) => style.id))]).toHaveLength(2);
 
             // Applied style!
             expect(getComputedStyle(document.body).color).toBe('red');
@@ -234,6 +253,8 @@ describe('utils', () => {
     describe('bundling', () => {
         function generateJsChunk(name: string, importedCss: string[], isEntry: boolean = false): OutputChunk {
             return {
+                preliminaryFileName: '',
+                sourcemapFileName: null,
                 code: name,
                 dynamicImports: [],
                 exports: [],
@@ -264,25 +285,25 @@ describe('utils', () => {
                     name: 'a',
                     source: 'a',
                     type: 'asset',
-                },
+                } as OutputChunk | OutputAsset,
                 'b.css': {
                     fileName: 'b.css',
                     name: 'b',
                     source: 'b',
                     type: 'asset',
-                },
+                } as OutputChunk | OutputAsset,
                 'c.css': {
                     fileName: 'c.css',
                     name: 'c',
                     source: 'c',
                     type: 'asset',
-                },
+                } as OutputChunk | OutputAsset,
                 'empty.css': {
                     fileName: 'empty.css',
                     name: 'empty',
                     source: '',
                     type: 'asset',
-                },
+                } as OutputChunk | OutputAsset,
             };
         });
 
@@ -595,8 +616,8 @@ describe('utils', () => {
 
                 const chunk1 = bundle['chunk-1.js'] as OutputChunk;
                 const chunk2 = bundle['chunk-2.js'] as OutputChunk;
-                expect(chunk1.viteMetadata.importedCss.size).toBe(1);
-                expect(chunk2.viteMetadata.importedCss.size).toBe(1);
+                expect(chunk1?.viteMetadata?.importedCss.size).toBe(1);
+                expect(chunk2?.viteMetadata?.importedCss.size).toBe(1);
             });
 
             it('should remove all importedCss', () => {
@@ -609,8 +630,8 @@ describe('utils', () => {
                 clearImportedCssViteMetadataFromBundle(bundle, unusedCssAssets);
                 const chunk1 = bundle['chunk-1.js'] as OutputChunk;
                 const chunk2 = bundle['chunk-2.js'] as OutputChunk;
-                expect(chunk1.viteMetadata.importedCss.size).toBe(0);
-                expect(chunk2.viteMetadata.importedCss.size).toBe(0);
+                expect(chunk1?.viteMetadata?.importedCss.size).toBe(0);
+                expect(chunk2?.viteMetadata?.importedCss.size).toBe(0);
             });
         });
     });
