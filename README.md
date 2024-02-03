@@ -31,12 +31,13 @@ export default {
 
 ### Configurations
 
-When you add the plugin, you can provide a configuration object.
-Below you can find all configuration parameters available.
+When you add the plugin, you can provide a configuration object. Below you can find all configuration parameters
+available.
 
 #### cssAssetsFilterFunction (function)
 
-The `cssAssetsFilterFunction` parameter allows you to specify a filter function that will enable you to exclude some output css assets.
+The `cssAssetsFilterFunction` parameter allows you to specify a filter function that will enable you to exclude some
+output css assets.
 
 **This option is not applied to `relativeCSSInjection` logic.**
 
@@ -59,10 +60,16 @@ export default {
 #### dev (object)
 
 **EXPERIMENTAL**
+Why experimental? Because it uses a non-conventional solution.
 
-Before this param this plugin applied the logic only in build phase.
-Now we can experiment it in the dev environment.
-To enable the plugin to work also in the dev environment you should configure a `dev` object and set the `enableDev` param to `true`, an example:
+Previously, the plugin strictly applied logic solely during the build phase. Now, we have the capability to experiment
+with it in the development environment.
+
+To activate the plugin in the development environment as well, you need to configure a dev object and set the enableDev
+parameter to true.
+
+Here's an example:
+
 ```ts
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
@@ -79,22 +86,30 @@ export default {
     ]
 }
 ```
-This approach should be sufficient unless you are using custom injection code to insert styles where needed.
-Since the dev environment involve the concept of "update" the style in the DOM this plugin need at least the code that remove from the DOM the injected style.
-Because of all of this, **if you are using custom injection code (by using `injectCode` or `injectCodeFunction`)**, this plugin can't know how to delete the style you injected.
-So all you need to do is configure one of `removeStyleCode`, `removeStyleCodeFunction` inside the dev object showed above.
 
-**NOTE:** The `injectCode` and `injectCodeFunction` parameters now also include the `attributes`, and in dev mode, the attributes object encompasses the `data-vite-dev-id` as well. Refer to the `injectCodeFunction` example below for further details.
+This approach should serve its purpose effectively unless you're employing custom injection code to insert styles where
+necessary. Since the development environment involves the concept of "updating" styles in the Document Object Model (
+DOM), this plugin requires code to remove the injected style from the DOM.
+
+Due to these factors, if you're utilizing custom injection code (via `injectCode` or `injectCodeFunction`), the plugin
+cannot automatically discern how to delete the injected style. Therefore, all you need to do is configure
+either `removeStyleCode` or `removeStyleCodeFunction` within the `dev` object as demonstrated above.
+
+**NOTE:** The `injectCode` and `injectCodeFunction` parameters now also include the `attributes`, and in `dev` mode,
+the `attributes` object encompasses the `data-vite-dev-id` as well. Refer to the `injectCodeFunction` example below for
+further details.
 
 #### injectCode (function)
 
-You can provide also a function for `injectCode` param to customize the injection code used. 
-The `injectCode` callback must return a `string` (with valid JS code) and it's called with two arguments:
+You can provide also a function for `injectCode` param to customize the injection code used. The `injectCode` callback
+must return a `string` (with valid JS code) and it's called with two arguments:
 
 - cssCode (the `string` that contains all the css code that need to be injected via JavaScript)
-- options (an object with `styleId`, `useStrictCSP` and `attributes` the last is an object that represent the attributes of the style element that should have)
+- options (an object with `styleId`, `useStrictCSP` and `attributes` the last is an object that represent the attributes
+  of the style element that should have)
 
 This is an example:
+
 ```ts
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
@@ -116,7 +131,8 @@ If you prefer to specify the injectCode as a plain function you can use the `inj
 The `injectCodeFunction` function is a void function that will be called at runtime application with two arguments:
 
 - cssCode (the `string` that contains all the css code that need to be injected via JavaScript)
-- options (an object with `styleId`, `useStrictCSP` and `attributes` the last is an object that represent the attributes of the style element that should have)
+- options (an object with `styleId`, `useStrictCSP` and `attributes` the last is an object that represent the attributes
+  of the style element that should have)
 
 This is an example:
 
@@ -135,7 +151,7 @@ export default {
                         for (const attribute in options.attributes) {
                             elementStyle.setAttribute(attribute, options.attributes[attribute]);
                         }
-                        
+
                         elementStyle.appendChild(document.createTextNode(${cssCode}));
                         document.head.appendChild(elementStyle);
                     }
@@ -171,8 +187,8 @@ export default {
 }
 ```
 
-In this example, the CSS injection code will only be added to the `index.js` file. If you wish to add the code to multiple
-files, you can specify them in the function:
+In this example, the CSS injection code will only be added to the `index.js` file. If you wish to add the code to
+multiple files, you can specify them in the function:
 
 ```javascript
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
@@ -214,18 +230,21 @@ export default {
 
 #### relativeCSSInjection (boolean)
 
-_This feature is based on information provided by Vite. Since we can't control how Vite handles this information this means that there may be problems that may not be possible to fix them in this plugin._
+_This feature is based on information provided by Vite. Since we can't control how Vite handles this information this
+means that there may be problems that may not be possible to fix them in this plugin._
 
 The default behavior of this plugin takes all the CSS code of your application directly to the entrypoint generated.
-The `relativeCSSInjection` if configured to `true` will inject the CSS code of every entrypoint to the relative importer.
+The `relativeCSSInjection` if configured to `true` will inject the CSS code of every entrypoint to the relative
+importer.
 
 **Set this option to `true` if you are using the multiple entry point option of Rollup.**
 **For this feature to work, `build.cssCodeSplit` must be set to `true`**
 
-_Future release can have an advanced behavior where this options will be configured to true automatically by sniffing user configurations._
+_Future release can have an advanced behavior where this options will be configured to true automatically by sniffing
+user configurations._
 
-If a CSS chunk is generated that's not imported by any JS chunk, a warning will be shown.
-To disable this warning set `suppressUnusedCssWarning` to `true`.
+If a CSS chunk is generated that's not imported by any JS chunk, a warning will be shown. To disable this warning
+set `suppressUnusedCssWarning` to `true`.
 
 #### styleId (string | function)
 
@@ -251,7 +270,8 @@ The output injected into the DOM will look like this example:
 </head>
 ```
 
-If you provide a `function` for `styleId` param, it will run that function and return a string. It's especially useful if you use `relativeCSSInjection` and want unique styleIds for each file.
+If you provide a `function` for `styleId` param, it will run that function and return a string. It's especially useful
+if you use `relativeCSSInjection` and want unique styleIds for each file.
 
 ```ts
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
@@ -264,6 +284,7 @@ export default {
 ```
 
 ```html
+
 <head>
     <style id="foo-1234">/* Generated CSS rules */</style>
     <style id="foo-4321">/* Generated CSS rules */</style>
@@ -309,7 +330,7 @@ will be injected by our default injection code.
 
 ## Contributing
 
-When you make changes to plugin locally, you may want to build the js from the typescript file of the plugin. 
+When you make changes to plugin locally, you may want to build the js from the typescript file of the plugin.
 
 Here the guidelines:
 
@@ -333,7 +354,9 @@ npm run build
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
 
-
 ### A note for plugin-legacy users
-At first the plugin supported generating the CSS injection code also in the legacy files generated by the [plugin-legacy](https://github.com/vitejs/vite/tree/main/packages/plugin-legacy). Since the plugin-legacy injects the CSS code for [different reasons](https://github.com/vitejs/vite/issues/2062), this plugin no longer has the plugin-legacy support code.
-If the code of the plugin-legacy changes an update to this plugin may occur.
+
+At first the plugin supported generating the CSS injection code also in the legacy files generated by
+the [plugin-legacy](https://github.com/vitejs/vite/tree/main/packages/plugin-legacy). Since the plugin-legacy injects
+the CSS code for [different reasons](https://github.com/vitejs/vite/issues/2062), this plugin no longer has the
+plugin-legacy support code. If the code of the plugin-legacy changes an update to this plugin may occur.
