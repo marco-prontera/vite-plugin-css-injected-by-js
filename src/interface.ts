@@ -1,7 +1,7 @@
 import type { InjectCode, InjectCodeFunction } from './utils';
 import type { OutputAsset, OutputChunk } from 'rollup';
 import type { BuildOptions } from 'vite';
-import { ModuleFormat } from 'rollup';
+import type { ModuleFormat } from 'rollup';
 
 export interface DevOptions {
     enableDev?: boolean;
