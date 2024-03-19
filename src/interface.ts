@@ -1,6 +1,7 @@
 import type { InjectCode, InjectCodeFunction } from './utils';
 import type { OutputAsset, OutputChunk } from 'rollup';
 import type { BuildOptions } from 'vite';
+import { ModuleFormat } from 'rollup';
 
 export interface DevOptions {
     enableDev?: boolean;
@@ -9,12 +10,13 @@ export interface DevOptions {
 }
 
 export interface BaseOptions {
+    dev?: DevOptions;
     injectCode?: InjectCode;
     injectCodeFunction?: InjectCodeFunction;
+    injectionCodeFormat?: ModuleFormat;
     styleId?: string | (() => string);
     topExecutionPriority?: boolean;
     useStrictCSP?: boolean;
-    dev?: DevOptions;
 }
 
 export interface PluginConfiguration extends BaseOptions {
