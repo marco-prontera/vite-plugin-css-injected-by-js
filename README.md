@@ -164,6 +164,10 @@ export default {
 }
 ```
 
+#### injectionCodeFormat (ModuleFormat)
+
+You can specify the format of the injection code, by default is `iife`.
+
 #### jsAssetsFilterFunction (function)
 
 The `jsAssetsFilterFunction` parameter allows you to specify which JavaScript file(s) the CSS injection code should be
