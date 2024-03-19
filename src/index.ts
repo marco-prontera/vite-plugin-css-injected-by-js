@@ -20,8 +20,10 @@ import type { DevOptions, PluginConfiguration } from './interface';
  */
 export default function cssInjectedByJsPlugin({
     cssAssetsFilterFunction,
+    dev: { enableDev, removeStyleCode, removeStyleCodeFunction } = {} as DevOptions,
     injectCode,
     injectCodeFunction,
+    injectionCodeFormat,
     jsAssetsFilterFunction,
     preRenderCSSCode,
     relativeCSSInjection,
@@ -29,7 +31,6 @@ export default function cssInjectedByJsPlugin({
     suppressUnusedCssWarning,
     topExecutionPriority,
     useStrictCSP,
-    dev: { enableDev, removeStyleCode, removeStyleCodeFunction } = {} as DevOptions,
 }: PluginConfiguration | undefined = {}): Plugin[] {
     let config: ResolvedConfig;
 
@@ -66,13 +67,14 @@ export default function cssInjectedByJsPlugin({
 
                 const buildCssCode = (cssToInject: string) =>
                     buildCSSInjectionCode({
+                        buildOptions: config.build,
                         cssToInject:
                             typeof preRenderCSSCode == 'function' ? preRenderCSSCode(cssToInject) : cssToInject,
-                        styleId,
                         injectCode,
                         injectCodeFunction,
+                        injectionCodeFormat,
+                        styleId,
                         useStrictCSP,
-                        buildOptions: config.build,
                     });
 
                 const cssAssetsFilter = (asset: OutputAsset): boolean => {

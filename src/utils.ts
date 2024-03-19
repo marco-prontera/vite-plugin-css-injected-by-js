@@ -29,12 +29,13 @@ const defaultInjectCode: InjectCode = (cssCode, { styleId, useStrictCSP, attribu
 };
 
 export async function buildCSSInjectionCode({
+    buildOptions,
     cssToInject,
-    styleId,
     injectCode,
     injectCodeFunction,
+    injectionCodeFormat = 'iife',
+    styleId,
     useStrictCSP,
-    buildOptions,
 }: BuildCSSInjectionConfiguration): Promise<OutputChunk | null> {
     let { minify, target } = buildOptions;
 
@@ -63,7 +64,7 @@ export async function buildCSSInjectionCode({
                     ['all-css']: cssInjectedByJsId,
                 },
                 output: {
-                    format: 'iife',
+                    format: injectionCodeFormat,
                     manualChunks: undefined,
                 },
             },
