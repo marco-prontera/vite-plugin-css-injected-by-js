@@ -103,6 +103,14 @@ export default function cssInjectedByJsPlugin({
                             );
                     }
                 } else {
+                    const allCssAssets = Object.keys(bundle).filter(
+                        (i) =>
+                            bundle[i].type == 'asset' &&
+                            bundle[i].fileName.endsWith('.css')
+                    );
+
+                    unusedCssAssets = allCssAssets.filter(cssAsset => !cssAssets.includes(cssAsset));
+
                     await globalCssInjection(
                         bundle,
                         cssAssets,
