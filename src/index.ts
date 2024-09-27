@@ -48,7 +48,7 @@ export default function cssInjectedByJsPlugin({
                     }
 
                     if (relativeCSSInjection == true) {
-                        if (config.build.cssCodeSplit == false) {
+                        if (!config.build.cssCodeSplit) {
                             config.build.cssCodeSplit = true;
                             warnLog(
                                 `[vite-plugin-css-injected-by-js] Override of 'build.cssCodeSplit' option to true, it must be true when 'relativeCSSInjection' is enabled.`
