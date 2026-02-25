@@ -1,4 +1,5 @@
 # vite-plugin-css-injected-by-js 🤯
+[![npm version](https://badge.fury.io/js/vite-plugin-css-injected-by-js.svg)](https://www.npmjs.com/package/vite-plugin-css-injected-by-js)
 
 A Vite plugin that bundles your CSS into JavaScript at build time, removing separate CSS files and enabling single-file deployments.
 
