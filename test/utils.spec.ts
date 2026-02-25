@@ -117,7 +117,7 @@ describe('utils', () => {
 
             expect(styles).toHaveLength(2);
             // @ts-ignore Expect unique style ids
-            expect([...new Set(styles.map((style: { id: any }) => style.id))]).toHaveLength(2);
+            expect([...new Set([...styles].map((style: { id: any }) => style.id))]).toHaveLength(2);
 
             // Applied style!
             expect(getComputedStyle(document.body).color).toBe('red');

@@ -6,3 +6,10 @@ The important thing is that everything is explained through the comment and corr
 - Open Issue: The first step is to open an issue and write the problem, or the feature that you want the project implement.
 - Open a branch from develop: The name of the branch must be feature/[number of issue]
 - Open a Pull Request: After made your changes open a PR from your working branch to 'develop'
+
+## Tests
+- Unit tests: `npm test`
+- Integration fixtures: `npm run test:integration`
+
+Integration fixtures are generated from template projects in `test/fixtures-templates` at test runtime, so they stay
+lightweight in the repository while still exercising real Vite builds.

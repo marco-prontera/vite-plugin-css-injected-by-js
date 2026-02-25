@@ -64,8 +64,7 @@ export async function buildCSSInjectionCode({
                     ['all-css']: cssInjectedByJsId,
                 },
                 output: {
-                    format: injectionCodeFormat,
-                    manualChunks: undefined,
+                    format: injectionCodeFormat
                 },
             },
         },
