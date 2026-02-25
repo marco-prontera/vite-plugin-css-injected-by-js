@@ -9,17 +9,20 @@ By default, Vite extracts CSS into separate files during the build process. This
 
 ## Installation
 
-```npm install vite-plugin-css-injected-by-js --save-dev
+```terminal
+npm install vite-plugin-css-injected-by-js --save-dev
 ```
 
 or
 
-```yarn add vite-plugin-css-injected-by-js -D
+```terminal
+yarn add vite-plugin-css-injected-by-js -D
 ```
 
 or
 
-```pnpm add vite-plugin-css-injected-by-js -D
+```terminal
+pnpm add vite-plugin-css-injected-by-js -D
 ```
 
 ## Usage
@@ -357,17 +360,20 @@ Here the guidelines:
 
 ### Install
 
-```npm install
+```terminal
+npm install
 ```
 
 ### Testing
 
-```npm run test
+```terminal
+npm run test
 ```
 
 ### Build plugin
 
-```npm run build
+```terminal
+npm run build
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
