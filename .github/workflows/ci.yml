@@ -27,4 +27,4 @@ jobs:
       - run: npm install
       - run: npm run coverage
       - run: npm run ci-test
-      - run: npm run ci-test:integration
+      - run: npm run test:integration
