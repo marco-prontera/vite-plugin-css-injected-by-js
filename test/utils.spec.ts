@@ -9,6 +9,7 @@ import {
     extractCss,
     getJsTargetBundleKeys,
     globalCssInjection,
+    injectAndFixMap,
     relativeCssInjection,
     removeLinkStyleSheets,
     isCSSRequest,
@@ -209,7 +210,7 @@ describe('utils', () => {
                     const $style = document.createElement('style');
                     $style.setAttribute('custom-style-strict', '');
 
-                    const nonce = document.querySelector<HTMLMetaElement>('meta[property=csp-nonce]')?.content;
+                    const nonce = document.querySelector<HTMLMetaElement>('meta[property=csp-nonce]')?.content || '';
                     $style.nonce = nonce;
 
                     $style.appendChild(document.createTextNode(css));
@@ -232,6 +233,164 @@ describe('utils', () => {
 
             // Did we dynamically set the nonce?
             expect(elem?.nonce).toBe('abc-123');
+        });
+    });
+
+    describe('injectAndFixMap – sourcemap handling', () => {
+        function makeChunk(code: string, fileName: string): OutputChunk {
+            return {
+                preliminaryFileName: '',
+                sourcemapFileName: null,
+                code,
+                dynamicImports: [],
+                exports: [],
+                facadeModuleId: null,
+                fileName,
+                implicitlyLoadedBefore: [],
+                importedBindings: {},
+                imports: [],
+                isDynamicEntry: false,
+                isEntry: true,
+                isImplicitEntry: false,
+                map: null,
+                moduleIds: [],
+                modules: {},
+                name: 'test',
+                referencedFiles: [],
+                type: 'chunk',
+                viteMetadata: { importedAssets: new Set(), importedCss: new Set() },
+            };
+        }
+
+        it('prepends one ";" to mappings when top-priority and sourcemap asset exists', () => {
+            const chunk = makeChunk('console.log(1);', 'index.js');
+            const originalMappings = 'AAAA,SAAS';
+            const bundle: OutputBundle = {
+                'index.js': chunk,
+                'index.js.map': {
+                    fileName: 'index.js.map',
+                    name: 'index',
+                    needsCodeReference: false,
+                    originalFileName: null,
+                    source: JSON.stringify({ version: 3, mappings: originalMappings, sources: [], names: [] }),
+                    type: 'asset',
+                } as OutputAsset,
+            };
+
+            injectAndFixMap(chunk, 'var x=1;', { sourcemap: true }, true, bundle, false);
+
+            const map = JSON.parse((bundle['index.js.map'] as OutputAsset).source as string);
+            expect(map.mappings).toBe(';' + originalMappings);
+            expect(chunk.code.startsWith('var x=1;')).toBe(true);
+        });
+
+        it('does NOT shift mappings when appending to bottom (topExecutionPriority = false)', () => {
+            const chunk = makeChunk('console.log(1);', 'index.js');
+            const originalMappings = 'AAAA,SAAS';
+            const bundle: OutputBundle = {
+                'index.js': chunk,
+                'index.js.map': {
+                    fileName: 'index.js.map',
+                    name: 'index',
+                    needsCodeReference: false,
+                    originalFileName: null,
+                    source: JSON.stringify({ version: 3, mappings: originalMappings, sources: [], names: [] }),
+                    type: 'asset',
+                } as OutputAsset,
+            };
+
+            injectAndFixMap(chunk, 'var x=1;', { sourcemap: true }, false, bundle, false);
+
+            const map = JSON.parse((bundle['index.js.map'] as OutputAsset).source as string);
+            expect(map.mappings).toBe(originalMappings);
+            expect(chunk.code.endsWith('\nvar x=1;')).toBe(true);
+        });
+
+        it('applies semicolon-shift for virtual module mode regardless of topExecutionPriority', () => {
+            const chunk = makeChunk('console.log(1);', 'entry.js');
+            const originalMappings = 'EAAE';
+            const bundle: OutputBundle = {
+                'entry.js': chunk,
+                'entry.js.map': {
+                    fileName: 'entry.js.map',
+                    name: 'entry',
+                    needsCodeReference: false,
+                    originalFileName: null,
+                    source: JSON.stringify({ version: 3, mappings: originalMappings, sources: [], names: [] }),
+                    type: 'asset',
+                } as OutputAsset,
+            };
+
+            injectAndFixMap(chunk, 'var css="body{color:red}";', { sourcemap: true }, false, bundle, true);
+
+            const map = JSON.parse((bundle['entry.js.map'] as OutputAsset).source as string);
+            expect(map.mappings).toBe(';' + originalMappings);
+            // In virtual mode code is always prepended
+            expect(chunk.code.indexOf('console.log(1);')).toBeGreaterThan(0);
+        });
+
+        it('strips newlines from injected payload so it stays single-line', () => {
+            const chunk = makeChunk('console.log(1);', 'bundle.js');
+            const bundle: OutputBundle = { 'bundle.js': chunk };
+            const multiLineCode = 'var a = 1;\nvar b = 2;\nvar c = 3;';
+
+            injectAndFixMap(chunk, multiLineCode, undefined, true, bundle, false);
+
+            // The prepended part (before the newline separator) should have no \n
+            const prependedPart = chunk.code.split('\n')[0];
+            expect(prependedPart).not.toContain('\n');
+        });
+
+        it('does nothing when cssInjectionCode is empty', () => {
+            const chunk = makeChunk('console.log(1);', 'noop.js');
+            const bundle: OutputBundle = { 'noop.js': chunk };
+
+            injectAndFixMap(chunk, '', undefined, true, bundle, false);
+
+            expect(chunk.code).toBe('console.log(1);');
+        });
+
+        it('cleans /* empty css */ comments even when cssInjectionCode is empty', () => {
+            const chunk = makeChunk('/* empty css */console.log(1);/* empty css     */', 'noop.js');
+            const bundle: OutputBundle = { 'noop.js': chunk };
+
+            injectAndFixMap(chunk, '', undefined, true, bundle, false);
+
+            expect(chunk.code).toBe('console.log(1);');
+        });
+
+        it('replaces document.head with document_head in virtual-module payload', () => {
+            const chunk = makeChunk('console.log(1);', 'vm.js');
+            const bundle: OutputBundle = { 'vm.js': chunk };
+            const codeWithHead = 'document.head.appendChild(el);';
+
+            injectAndFixMap(chunk, codeWithHead, undefined, true, bundle, true);
+
+            // Verify the original references are shadowed
+            expect(chunk.code).toContain('document_head');
+            // The raw `document.head.appendChild` should not leak through
+            expect(chunk.code).not.toContain('document.head.appendChild');
+        });
+
+        it('wraps virtual-module payload with queue/unlock logic', () => {
+            const chunk = makeChunk('console.log(1);', 'vm2.js');
+            const bundle: OutputBundle = { 'vm2.js': chunk };
+
+            injectAndFixMap(chunk, 'var css="a";', undefined, true, bundle, true);
+
+            expect(chunk.code).toContain('__VITE_CSS_UNLOCKED__');
+            expect(chunk.code).toContain('__VITE_CSS_QUEUE__');
+        });
+
+        it('shifts chunk.map.mappings when the chunk has an inline map object', () => {
+            const originalMappings = 'AAAA';
+            const chunk = makeChunk('console.log(1);', 'inline.js');
+            (chunk as any).map = { version: 3, mappings: originalMappings, sources: [], names: [] };
+            const bundle: OutputBundle = { 'inline.js': chunk };
+
+            injectAndFixMap(chunk, 'var z=0;', { sourcemap: true }, true, bundle, false);
+
+            expect((chunk.map as any).mappings).toBe(';' + originalMappings);
         });
     });
 
@@ -494,7 +653,7 @@ describe('utils', () => {
                 expect(bundle['a.js'].code).toEqual('a');
 
                 await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
-                expect(bundle['a.js'].code).toEqual('aa');
+                expect(bundle['a.js'].code).toEqual('a\na');
             });
 
             it('should inject the relevant multiple css for a single file', async () => {
@@ -503,7 +662,7 @@ describe('utils', () => {
                 expect(bundle['a.js'].code).toEqual('a');
 
                 await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
-                expect(bundle['a.js'].code).toEqual('aca');
+                expect(bundle['a.js'].code).toEqual('ac\na');
             });
 
             it('should inject the relevant css for every file', async () => {
@@ -516,9 +675,9 @@ describe('utils', () => {
                 expect(bundle['c.js'].code).toEqual('c');
 
                 await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
-                expect(bundle['a.js'].code).toEqual('ca');
-                expect(bundle['b.js'].code).toEqual('ab');
-                expect(bundle['c.js'].code).toEqual('bc');
+                expect(bundle['a.js'].code).toEqual('c\na');
+                expect(bundle['b.js'].code).toEqual('a\nb');
+                expect(bundle['c.js'].code).toEqual('b\nc');
             });
 
             it('should inject the relevant css for only files with css', async () => {
@@ -531,9 +690,9 @@ describe('utils', () => {
                 expect(bundle['c.js'].code).toEqual('c');
 
                 await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
-                expect(bundle['a.js'].code).toEqual('aa');
+                expect(bundle['a.js'].code).toEqual('a\na');
                 expect(bundle['b.js'].code).toEqual('b'); // no css stitched in
-                expect(bundle['c.js'].code).toEqual('cc');
+                expect(bundle['c.js'].code).toEqual('c\nc');
             });
 
             it('should skip empty css injection', async () => {
@@ -550,7 +709,7 @@ describe('utils', () => {
                 bundle['a.js'].code = `/* empty css */${bundle['a.js'].code}/* empty css     */`;
                 await relativeCssInjection(bundle, buildJsCssMap(bundle), buildCssCodeMock, true);
 
-                expect(bundle['a.js'].code).toEqual('aa');
+                expect(bundle['a.js'].code).toEqual('a\na');
             });
         });
 
@@ -576,7 +735,7 @@ describe('utils', () => {
 
                 await globalCssInjection(bundle, cssAssets, buildCssCodeMock, undefined, true);
 
-                expect(bundle['a.js'].code).toEqual('abca');
+                expect(bundle['a.js'].code).toEqual('abc\na');
             });
 
             it('should remove occurrences of /* empty css */ from the bundled code', async () => {
@@ -586,7 +745,7 @@ describe('utils', () => {
 
                 await globalCssInjection(bundle, cssAssets, buildCssCodeMock, undefined, true);
 
-                expect(bundle['a.js'].code).toEqual('abca');
+                expect(bundle['a.js'].code).toEqual('abc\na');
             });
 
             it('should inject all css should throw if no entry is available', async () => {

@@ -5,7 +5,7 @@ A Vite plugin that bundles your CSS into JavaScript at build time, removing sepa
 
 ## How does it work
 
-By default, Vite extracts CSS into separate files during the build process. This plugin instead gathers all generated CSS and embeds it directly into the JavaScript bundle, injecting it at runtime. As a result, no standalone CSS file is produced and the corresponding <link> tag is removed from the generated HTML. You can also control the timing of the injection, specifying whether the styles should be applied before or after your application code executes.
+By default, Vite extracts CSS into separate files during the build process. This plugin instead gathers all generated CSS and embeds it directly into the JavaScript bundle, injecting it at runtime. As a result, no standalone CSS file is produced and the corresponding `<link>` tag is removed from the generated HTML. You can also control the timing of the injection, specifying whether the styles should be applied before or after your application code executes.
 
 ## Installation
 
@@ -37,6 +37,130 @@ export default defineConfig({
   ]
 })
 ```
+
+By default, the CSS is injected automatically when the JavaScript bundle loads. If you need **explicit control** over when the CSS is injected (e.g. for Web Components, Shadow DOM, or SPAs that need to defer rendering), see the [Virtual Module](#virtual-module-on-demand-injection) section below.
+
+---
+
+## Virtual Module: On-Demand Injection
+
+The plugin exposes an optional virtual module `virtual:css-injected-by-js` that gives you **explicit control** over when and where the bundled CSS is injected into the DOM.
+
+### When to use this
+
+| Use case | Recommended approach |
+|---|---|
+| Component-level granular lazy-loading | Vite's native `?inline` query |
+| **Macro-level** injection control (Library authors, Web Components, SPAs) | **Virtual module** `virtual:css-injected-by-js` |
+
+> **`?inline` vs Virtual Module:** For component-level CSS that you want to control per-file, use Vite's built-in `?inline` query (e.g. `import css from './my.css?inline'`). The virtual module is designed for **macro-level** control over the *entire bundled CSS payload* — deferring injection until your app is ready, or targeting a specific DOM node like a `ShadowRoot`.
+
+### Basic example
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default defineConfig({
+  plugins: [
+    cssInjectedByJsPlugin()
+  ]
+})
+```
+
+```ts
+// src/main.ts
+import { injectCSS } from 'virtual:css-injected-by-js'
+
+// Your application setup...
+const app = createApp()
+app.mount('#app')
+
+// Inject all bundled CSS when you're ready
+injectCSS()
+```
+
+### Shadow DOM example
+
+Pass a `target` option to inject the CSS into a `ShadowRoot` instead of `document.head`:
+
+```ts
+import { injectCSS } from 'virtual:css-injected-by-js'
+
+class MyWidget extends HTMLElement {
+  connectedCallback() {
+    const shadow = this.attachShadow({ mode: 'open' })
+    shadow.innerHTML = `<div class="widget">Hello</div>`
+
+    // Inject the bundled CSS into this Shadow DOM
+    injectCSS({ target: shadow })
+  }
+}
+
+customElements.define('my-widget', MyWidget)
+```
+
+### TypeScript support
+
+The plugin ships type declarations for the virtual module. Add it to your `tsconfig.json`:
+
+```jsonc
+{
+  "compilerOptions": {
+    "types": ["vite-plugin-css-injected-by-js/dist/esm/declarations/client"]
+  }
+}
+```
+
+The `InjectCSSOptions` interface:
+
+```ts
+interface InjectCSSOptions {
+  /**
+   * The target element where the <style> tag will be appended.
+   * Useful for injecting CSS into a Shadow DOM root.
+   * @default document.head
+   */
+  target?: HTMLElement | ShadowRoot
+}
+```
+
+### How it works under the hood
+
+#### Build mode (Queue & Unlock)
+
+During the build, each chunk's CSS injection code is wrapped in a function and pushed onto a global queue (`globalThis.__VITE_CSS_QUEUE__`). The CSS is **not** injected until you call `injectCSS()`. When called:
+
+1. A global flag (`globalThis.__VITE_CSS_UNLOCKED__`) is set to `true`.
+2. The queue is flushed — all pending CSS is injected.
+3. Any future lazy-loaded chunks that arrive after the unlock inject their CSS immediately.
+
+This ensures correct behavior with `relativeCSSInjection` and code-split chunks that load asynchronously.
+
+#### Dev mode (Mute & Observe)
+
+In development, Vite handles CSS natively for HMR. The virtual module uses a `MutationObserver` to **mute** all `<style data-vite-dev-id>` tags (by setting `media="not all"`) as soon as they appear. When you call `injectCSS()`:
+
+1. The observer is disconnected.
+2. All cached style nodes are unmuted (`media` attribute removed).
+3. If a `target` is provided, the style nodes are moved into that target.
+
+This gives you **100% Dev/Prod parity** — CSS is hidden until you explicitly reveal it.
+
+#### SSR & Web Worker safety
+
+All DOM operations are guarded by `typeof document !== 'undefined'` checks and `globalThis` is used instead of `window`. The `injectCSS()` call is a safe no-op in SSR or Web Worker contexts.
+
+---
+
+## Source Maps
+
+The plugin correctly preserves source maps when prepending CSS injection code to your chunks. When `build.sourcemap` is enabled and `topExecutionPriority` is `true` (the default), the injected CSS code is flattened into a single line and prepended to the chunk. The source map `mappings` string is shifted by prepending a single `;` character, which moves all original mappings down by exactly one row. This ensures debugger breakpoints remain accurate.
+
+No additional configuration is needed — source maps work automatically with all injection modes (`topExecutionPriority`, `relativeCSSInjection`, and the virtual module).
+
+---
 
 ### Configurations
 

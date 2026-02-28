@@ -236,7 +236,9 @@ export async function relativeCssInjection(
     bundle: OutputBundle,
     assetsWithCss: Record<string, string[]>,
     buildCssCode: (css: string) => Promise<OutputChunk | null>,
-    topExecutionPriorityFlag: boolean
+    topExecutionPriorityFlag: boolean,
+    buildOptions?: BuildCSSInjectionConfiguration['buildOptions'],
+    isVirtualModuleUsed: boolean = false
 ): Promise<void> {
     for (const [jsAssetName, cssAssets] of Object.entries(assetsWithCss)) {
         process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
@@ -246,11 +248,7 @@ export async function relativeCssInjection(
 
         // We have already filtered these chunks to be RenderedChunks
         const jsAsset = bundle[jsAssetName] as OutputChunk;
-        jsAsset.code = buildOutputChunkWithCssInjectionCode(
-            jsAsset.code,
-            cssInjectionCode ?? '',
-            topExecutionPriorityFlag
-        );
+        injectAndFixMap(jsAsset, cssInjectionCode ?? '', buildOptions, topExecutionPriorityFlag, bundle, isVirtualModuleUsed);
     }
 }
 
@@ -262,7 +260,9 @@ export async function globalCssInjection(
     cssAssets: string[],
     buildCssCode: (css: string) => Promise<OutputChunk | null>,
     jsAssetsFilterFunction: PluginConfiguration['jsAssetsFilterFunction'],
-    topExecutionPriorityFlag: boolean
+    topExecutionPriorityFlag: boolean,
+    buildOptions?: BuildCSSInjectionConfiguration['buildOptions'],
+    isVirtualModuleUsed: boolean = false
 ) {
     const jsTargetBundleKeys = getJsTargetBundleKeys(bundle, jsAssetsFilterFunction);
     if (jsTargetBundleKeys.length == 0) {
@@ -309,11 +309,13 @@ export async function globalCssInjection(
 
         process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
             debugLog(`[vite-plugin-css-injected-by-js] Global CSS inject: ${jsAsset.fileName}`);
-        jsAsset.code = buildOutputChunkWithCssInjectionCode(
+        
+        injectAndFixMap(jsAsset, cssInjectionCode, buildOptions, topExecutionPriorityFlag, bundle, isVirtualModuleUsed);
+        /*jsAsset.code = buildOutputChunkWithCssInjectionCode(
             jsAsset.code,
             cssInjectionCode ?? '',
             topExecutionPriorityFlag
-        );
+        );*/
     }
 }
 
@@ -349,4 +351,92 @@ export function isCSSRequest(request: string): boolean {
     const CSS_LANGS_RE = /\.(css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|\?)/;
 
     return CSS_LANGS_RE.test(request);
+}
+
+export function injectAndFixMap(
+  chunk: OutputChunk,
+  cssInjectionCode: string,
+  buildOptions: BuildCSSInjectionConfiguration['buildOptions'] | undefined,
+  topExecutionPriority: boolean,
+  bundle: OutputBundle,
+  isVirtualModuleUsed: boolean = false
+) {
+  // Always clean up empty CSS placeholder comments.
+  chunk.code = chunk.code.replace(/\/\*\s*empty css\s*\*\//g, '');
+
+  if (!cssInjectionCode) return;
+
+  // ── Source Map Resolution ──────────────────────────────────────────
+  let mapObj: { mappings: string; [k: string]: unknown } | null = null;
+  const mapAssetName = chunk.fileName + '.map';
+  const mapAsset = bundle[mapAssetName] as OutputAsset | undefined;
+
+  if (buildOptions?.sourcemap && mapAsset?.type === 'asset') {
+    try {
+      const raw =
+        mapAsset.source instanceof Uint8Array
+          ? new TextDecoder().decode(mapAsset.source)
+          : String(mapAsset.source);
+      mapObj = JSON.parse(raw);
+    } catch (_) {
+      /* swallow */
+    }
+  }
+
+  /**
+   * Apply the "Semicolon Shift" (Issue #155 fix):
+   * Prepend one `;` to the VLQ `mappings` string to push every existing
+   * mapping down by exactly one row – matching the single line we
+   * prepended to the chunk code.
+   */
+  const shiftMap = () => {
+    if (mapObj && mapAsset) {
+      mapObj.mappings = ';' + mapObj.mappings;
+      (mapAsset as OutputAsset).source = JSON.stringify(mapObj);
+    }
+    if (chunk.map && typeof chunk.map.mappings === 'string') {
+      chunk.map.mappings = ';' + chunk.map.mappings;
+    }
+  };
+
+  if (isVirtualModuleUsed) {
+    // ── VIRTUAL MODULE MODE: Queue & Unlock ────────────────────────
+    // Shadow `document.head` inside an IIFE so the user's custom target
+    // (e.g. a ShadowRoot passed via injectCSS({ target })) flows into
+    // the original injection template without any code-gen changes.
+    const patched = cssInjectionCode.replace(/document\.head/g, 'document_head');
+
+    const payload =
+      '(function(){' +
+        'var _ei=function(_o){' +
+          'var _t=(_o&&_o.target)||(typeof document!=="undefined"?document.head:void 0);' +
+          'if(!_t)return;' +
+          '(function(document_head){' + patched + '})(_t)' +
+        '};' +
+        'if(typeof globalThis!=="undefined"){' +
+          'if(globalThis.__VITE_CSS_UNLOCKED__){' +
+            '_ei(globalThis.__VITE_CSS_INJECT_OPTS__||{});' +
+          '}else{' +
+            '(globalThis.__VITE_CSS_QUEUE__=globalThis.__VITE_CSS_QUEUE__||[]).push(_ei);' +
+          '}' +
+        '}' +
+      '})();';
+
+    // Flatten any stray newlines from the injection code into one line.
+    const singleLine = payload.replace(/\n/g, '');
+
+    chunk.code = singleLine + '\n' + chunk.code;
+    shiftMap();
+  } else {
+    // ── STANDARD MODE ──────────────────────────────────────────────
+    const singleLine = cssInjectionCode.replace(/\n/g, '');
+
+    if (topExecutionPriority) {
+      chunk.code = singleLine + '\n' + chunk.code;
+      shiftMap();
+    } else {
+      chunk.code += '\n' + singleLine;
+      // No map shift needed when appending to the bottom.
+    }
+  }
 }

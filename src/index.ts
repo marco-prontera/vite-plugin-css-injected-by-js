@@ -13,10 +13,77 @@ import type { OutputAsset } from 'rollup';
 import type { Plugin, ResolvedConfig } from 'vite';
 import type { DevOptions, PluginConfiguration } from './interface';
 
+
+const VIRTUAL_MODULE_ID = 'virtual:css-injected-by-js';
+const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID;
+
+// ── Virtual Module: Build Mode ─────────────────────────────────────────────
+// Queue & Unlock pattern.  Chunks push their injection functions to a global
+// queue.  When the consumer calls `injectCSS(opts)` the queue is flushed
+// and the system is unlocked so future lazy-loaded chunks inject immediately.
+const VIRTUAL_MODULE_BUILD_CODE = `
+export function injectCSS(opts) {
+  if (typeof globalThis === 'undefined') return;
+  globalThis.__VITE_CSS_INJECT_OPTS__ = opts || {};
+  globalThis.__VITE_CSS_UNLOCKED__ = true;
+  var q = globalThis.__VITE_CSS_QUEUE__;
+  if (q) {
+    globalThis.__VITE_CSS_QUEUE__ = [];
+    for (var i = 0; i < q.length; i++) q[i](opts || {});
+  }
+}
+`;
+
+// ── Virtual Module: Dev Mode ───────────────────────────────────────────────
+// Mute every Vite-managed <style data-vite-dev-id> tag at import time via a
+// MutationObserver.  When the consumer calls `injectCSS(opts)` the observer
+// is disconnected, cached nodes are unmuted, and (optionally) moved into the
+// user-provided target (e.g. a ShadowRoot).
+const VIRTUAL_MODULE_DEV_CODE = `
+var _cssEnabled = false;
+var _styleCache = new Set();
+var _observer = null;
+
+if (typeof document !== 'undefined') {
+  document.querySelectorAll('style[data-vite-dev-id]').forEach(function(n) {
+    n.setAttribute('media', 'not all');
+    _styleCache.add(n);
+  });
+
+  _observer = new MutationObserver(function(muts) {
+    if (_cssEnabled) return;
+    muts.forEach(function(m) {
+      m.addedNodes.forEach(function(n) {
+        if (n.nodeType === 1 && n.tagName === 'STYLE' && n.hasAttribute('data-vite-dev-id')) {
+          n.setAttribute('media', 'not all');
+          _styleCache.add(n);
+        }
+      });
+    });
+  });
+
+  _observer.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+export function injectCSS(opts) {
+  _cssEnabled = true;
+  if (_observer) _observer.disconnect();
+  if (typeof document === 'undefined') return;
+  var target = (opts && opts.target) || document.head;
+  _styleCache.forEach(function(n) {
+    n.removeAttribute('media');
+    if (target !== document.head) {
+      target.appendChild(n);
+    }
+  });
+  _styleCache.clear();
+}
+`;
+
 /**
  * Inject the CSS compiled with JS.
  *
- * @return {Plugin}
+ * @return {Plugin[]}
  */
 export default function cssInjectedByJsPlugin({
     cssAssetsFilterFunction,
@@ -35,8 +102,34 @@ export default function cssInjectedByJsPlugin({
     let config: ResolvedConfig;
 
     const topExecutionPriorityFlag = typeof topExecutionPriority == 'boolean' ? topExecutionPriority : true;
+    
+    let isBuild = false;
+    let isVirtualModuleUsed = false;
 
     const plugins: Plugin[] = [
+        // ── Plugin 1: Virtual Module ───────────────────────────────────
+        // Runs at normal priority.  Tracks whether the consumer imported
+        // the virtual module and returns the appropriate build/dev shim.
+        {
+            name: 'vite-plugin-css-injected-by-js-virtual',
+            configResolved(resolvedConfig) {
+                isBuild = resolvedConfig.command === 'build';
+            },
+            resolveId(id) {
+                if (id === VIRTUAL_MODULE_ID) {
+                    return RESOLVED_VIRTUAL_MODULE_ID;
+                }
+            },
+            load(id) {
+                if (id === RESOLVED_VIRTUAL_MODULE_ID) {
+                    isVirtualModuleUsed = true;
+                    return isBuild ? VIRTUAL_MODULE_BUILD_CODE : VIRTUAL_MODULE_DEV_CODE;
+                }
+            },
+        },
+        // ── Plugin 2: Bundle Manipulation (enforce: 'post') ────────────
+        // Contains all the original CSS-into-JS injection logic.
+        // Receives `isVirtualModuleUsed` from the shared closure.
         {
             apply: 'build',
             enforce: 'post',
@@ -91,7 +184,14 @@ export default function cssInjectedByJsPlugin({
                 let unusedCssAssets: string[] = [];
                 if (relativeCSSInjection) {
                     const assetsWithCss = buildJsCssMap(bundle, jsAssetsFilterFunction);
-                    await relativeCssInjection(bundle, assetsWithCss, buildCssCode, topExecutionPriorityFlag);
+                    await relativeCssInjection(
+                        bundle,
+                        assetsWithCss,
+                        buildCssCode,
+                        topExecutionPriorityFlag,
+                        config.build,
+                        isVirtualModuleUsed
+                    );
 
                     unusedCssAssets = cssAssets.filter((cssAsset) => !!bundle[cssAsset]);
                     if (!suppressUnusedCssWarning) {
@@ -116,7 +216,9 @@ export default function cssInjectedByJsPlugin({
                         cssAssets,
                         buildCssCode,
                         jsAssetsFilterFunction,
-                        topExecutionPriorityFlag
+                        topExecutionPriorityFlag,
+                        config.build,
+                        isVirtualModuleUsed
                     );
                 }
 
