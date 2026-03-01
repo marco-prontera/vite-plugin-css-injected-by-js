@@ -12,124 +12,12 @@ import {
 import type { OutputAsset } from 'rollup';
 import type { Plugin, ResolvedConfig } from 'vite';
 import type { DevOptions, PluginConfiguration } from './interface';
+import { injectCSS as buildInject, removeCSS as buildRemove, getRawCSS as buildRaw } from './runtime/build.js';
+import { injectCSS as devInject, removeCSS as devRemove, getRawCSS as devRaw } from './runtime/dev.js';
 
 const VIRTUAL_MODULE_ID = 'virtual:css-injected-by-js';
 const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID;
 
-const VIRTUAL_MODULE_BUILD_CODE = `
-export function injectCSS(opts) {
-  if (typeof globalThis === 'undefined') return;
-  globalThis.__VITE_CSS_INJECT_OPTS__ = opts || {};
-  
-  var q = globalThis.__VITE_CSS_QUEUE__ || [];
-  var exec = globalThis.__VITE_CSS_EXECUTED__ || [];
-  
-  /* 1. Run already loaded chunks for the given target */
-  for (var i = 0; i < exec.length; i++) {
-    exec[i](opts || {});
-  }
-  
-  /* 2. Run new chunks and move them to executed */
-  for (var i = 0; i < q.length; i++) {
-    q[i](opts || {});
-    exec.push(q[i]);
-  }
-  
-  globalThis.__VITE_CSS_QUEUE__ = [];
-  globalThis.__VITE_CSS_EXECUTED__ = exec;
-}
-
-export function removeCSS(opts) {
-  if (typeof globalThis === 'undefined') return;
-  var els = globalThis.__VITE_CSS_ELS__ || [];
-  var target = opts && opts.target;
-  
-  for (var i = 0; i < els.length; i++) {
-    var item = els[i];
-    if (target) {
-      /* Only remove if it matches the requested target */
-      if (item.target === target && item.el.parentNode) {
-        item.el.parentNode.removeChild(item.el);
-      }
-    } else {
-      /* Global removal: rip out everything */
-      if (item.el.parentNode) {
-        item.el.parentNode.removeChild(item.el);
-      }
-    }
-  }
-}
-
-export function getRawCSS() {
-  if (typeof globalThis === 'undefined') return '';
-  return globalThis.__VITE_CSS_RAW__ || '';
-}
-`;
-const VIRTUAL_MODULE_DEV_CODE = `
-var _cssEnabled = false;
-var _styleCache = new Set();
-var _observer = null;
-
-function _observe() {
-  if (_observer && typeof document !== 'undefined') {
-    _observer.observe(document.documentElement, { childList: true, subtree: true });
-  }
-}
-
-if (typeof document !== 'undefined') {
-  document.querySelectorAll('style[data-vite-dev-id]').forEach(function(n) {
-    n.setAttribute('media', 'not all');
-    _styleCache.add(n);
-  });
-
-  _observer = new MutationObserver(function(muts) {
-    if (_cssEnabled) return;
-    muts.forEach(function(m) {
-      m.addedNodes.forEach(function(n) {
-        if (n.nodeType === 1 && n.tagName === 'STYLE' && n.hasAttribute('data-vite-dev-id')) {
-          n.setAttribute('media', 'not all');
-          _styleCache.add(n);
-        }
-      });
-    });
-  });
-
-  _observe();
-}
-
-export function injectCSS(opts) {
-  _cssEnabled = true;
-  if (_observer) _observer.disconnect();
-  if (typeof document === 'undefined') return;
-  var target = (opts && opts.target) || document.head;
-  _styleCache.forEach(function(n) {
-    n.removeAttribute('media');
-    if (target !== document.head) {
-      target.appendChild(n);
-    }
-  });
-}
-
-export function removeCSS(opts) {
-  _cssEnabled = false;
-  var target = opts && opts.target;
-  
-  _styleCache.forEach(function(n) {
-    if (target) {
-      /* Only mute if it was moved to this specific target */
-      if (n.parentNode === target) n.setAttribute('media', 'not all');
-    } else {
-      /* Global mute */
-      n.setAttribute('media', 'not all');
-    }
-  });
-  _observe();
-}
-
-export function getRawCSS() {
-  return '';
-}
-`;
 
 /**
  * Inject the CSS compiled with JS.
@@ -178,9 +66,52 @@ export default function cssInjectedByJsPlugin({
             load(id) {
                 if (id === RESOLVED_VIRTUAL_MODULE_ID) {
                     isVirtualModuleUsed = true;
-                    return isBuild ? VIRTUAL_MODULE_BUILD_CODE : VIRTUAL_MODULE_DEV_CODE;
+                    
+                    // Convert the actual TypeScript functions back into strings!
+                    // Note: .toString() removes the 'export' keyword, so we add it back.
+                    if (isBuild) {
+                        return `
+                            export ${buildInject.toString()}
+                            export ${buildRemove.toString()}
+                            export ${buildRaw.toString()}
+                        `;
+                    } else {
+                        // For dev, you might need to prepend your cache variables first
+                        return `
+                            var _cssEnabled = false;
+                            var _styleCache = new Set();
+                            var _observer = null;
+                            function _observe() {
+                              if (_observer && typeof document !== 'undefined') {
+                                _observer.observe(document.documentElement, { childList: true, subtree: true });
+                              }
+                            }
+                            if (typeof document !== 'undefined') {
+                              document.querySelectorAll('style[data-vite-dev-id]').forEach(function(n) {
+                                n.setAttribute('media', 'not all');
+                                _styleCache.add(n);
+                              });
+                              _observer = new MutationObserver(function(muts) {
+                                if (_cssEnabled) return;
+                                muts.forEach(function(m) {
+                                  m.addedNodes.forEach(function(n) {
+                                    if (n.nodeType === 1 && n.tagName === 'STYLE' && n.hasAttribute('data-vite-dev-id')) {
+                                      n.setAttribute('media', 'not all');
+                                      _styleCache.add(n);
+                                    }
+                                  });
+                                });
+                              });
+                              _observe();
+                            }
+
+                            export ${devInject.toString()}
+                            export ${devRemove.toString()}
+                            export ${devRaw.toString()}
+                        `;
+                    }
                 }
-            },
+            }
         },
         {
             apply: 'build',

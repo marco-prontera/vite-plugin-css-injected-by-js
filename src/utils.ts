@@ -391,68 +391,64 @@ export function injectAndFixMap(
     if (isVirtualModuleUsed) {
         const patched = cssInjectionCode ? cssInjectionCode.replace(/document\.head/g, 'document_head') : '';
 
-        const payload = `
-            (function() {
-                /* SSR Support: Store raw CSS globally */
-                if (typeof globalThis !== 'undefined') {
-                    globalThis.__VITE_CSS_RAW__ = (globalThis.__VITE_CSS_RAW__ || '') + ${JSON.stringify(rawCss || '')};
-                }
+        // 1. Write the payload as a REAL function for syntax highlighting and linting!
+        const payloadTemplate = function() {
+            /* SSR Support: Store raw CSS globally */
+            if (typeof globalThis !== 'undefined') {
+                (globalThis as any).__VITE_CSS_RAW__ = ((globalThis as any).__VITE_CSS_RAW__ || '') + '%%RAW_CSS%%';
+            }
 
-                /* DOM Injection Support */
-                if (typeof document !== 'undefined' && typeof globalThis !== 'undefined') {
-                    var executeInject = function(options) {
-                        var target = (options && options.target) || document.head;
-                        if (!target) return;
+            /* DOM Injection Support */
+            if (typeof document !== 'undefined' && typeof globalThis !== 'undefined') {
+                var executeInject: any = function(options: any) {
+                    var target = (options && options.target) || document.head;
+                    if (!target) return;
 
-                        executeInject.cache = executeInject.cache || [];
+                    executeInject.cache = executeInject.cache || [];
+                    
+                    for (var i = 0; i < executeInject.cache.length; i++) {
+                        if (executeInject.cache[i].target === target) {
+                            var els = executeInject.cache[i].elements;
+                            for (var j = 0; j < els.length; j++) target.appendChild(els[j]);
+                            return; 
+                        }
+                    }
+
+                    var newElements: any[] = [];
+                    var observer = new MutationObserver(function() {});
+                    var obsTarget = target.nodeType === 11 ? target : (document.documentElement || document);
+                    observer.observe(obsTarget, { childList: true, subtree: true });
+
+                    try {
+                        (function(document_head) {
+                            // %%PATCHED_CODE%%
+                        })(target);
+                    } finally {
+                        var records = observer.takeRecords();
+                        (globalThis as any).__VITE_CSS_ELS__ = (globalThis as any).__VITE_CSS_ELS__ || [];
                         
-                        /* 1. Check if we already created styles for THIS specific target */
-                        for (var i = 0; i < executeInject.cache.length; i++) {
-                            if (executeInject.cache[i].target === target) {
-                                var els = executeInject.cache[i].elements;
-                                for (var j = 0; j < els.length; j++) {
-                                    target.appendChild(els[j]);
-                                }
-                                return; /* Exit early, styles re-attached! */
+                        for (var i = 0; i < records.length; i++) {
+                            for (var j = 0; j < records[i].addedNodes.length; j++) {
+                                var node = records[i].addedNodes[j];
+                                newElements.push(node);
+                                (globalThis as any).__VITE_CSS_ELS__.push({ target: target, el: node }); 
                             }
                         }
+                        observer.disconnect();
+                    }
 
-                        /* 2. First time for this target: Execute injection to create NEW elements */
-                        var newElements = [];
-                        var observer = new MutationObserver(function() {});
-                        
-                        /* Fix: ShadowRoots (nodeType 11) must be observed directly due to encapsulation */
-                        var obsTarget = target.nodeType === 11 ? target : (document.documentElement || document);
-                        observer.observe(obsTarget, { childList: true, subtree: true });
+                    executeInject.cache.push({ target: target, elements: newElements });
+                };
 
-                        try {
-                            (function(document_head) {
-                                ${patched}
-                            })(target);
-                        } finally {
-                            var records = observer.takeRecords();
-                            globalThis.__VITE_CSS_ELS__ = globalThis.__VITE_CSS_ELS__ || [];
-                            
-                            for (var i = 0; i < records.length; i++) {
-                                for (var j = 0; j < records[i].addedNodes.length; j++) {
-                                    var node = records[i].addedNodes[j];
-                                    newElements.push(node);
-                                    /* Store the target reference with the node for targeted removeCSS */
-                                    globalThis.__VITE_CSS_ELS__.push({ target: target, el: node }); 
-                                }
-                            }
-                            observer.disconnect();
-                        }
+                (globalThis as any).__VITE_CSS_QUEUE__ = (globalThis as any).__VITE_CSS_QUEUE__ || [];
+                (globalThis as any).__VITE_CSS_QUEUE__.push(executeInject);
+            }
+        };
 
-                        /* 3. Save to cache for this specific target */
-                        executeInject.cache.push({ target: target, elements: newElements });
-                    };
-
-                    globalThis.__VITE_CSS_QUEUE__ = globalThis.__VITE_CSS_QUEUE__ || [];
-                    globalThis.__VITE_CSS_QUEUE__.push(executeInject);
-                }
-            })();
-        `;
+        // 2. Serialize the function to a string, and replace our placeholders!
+        const payload = `(${payloadTemplate.toString()})();`
+            .replace("'%%RAW_CSS%%'", JSON.stringify(rawCss || ''))
+            .replace('// %%PATCHED_CODE%%', patched);
 
         const singleLine = payload.replace(/\n/g, '').replace(/\s{2,}/g, ' ');
 
