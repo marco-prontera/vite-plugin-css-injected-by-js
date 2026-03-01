@@ -15,7 +15,9 @@ shadowContent.className = 'shadow-next-inner';
 shadowContent.textContent = 'Shadow next content';
 const shadowBtn = document.createElement('button');
 shadowBtn.textContent = 'Click me to remove injected CSS';
-shadowBtn.addEventListener('click', removeCSS);
+shadowBtn.addEventListener('click', () => {
+  removeCSS({ target: shadowRoot });
+});
 const shadowAddCss = document.createElement('button');
 shadowAddCss.textContent = 'Click me to re-inject CSS';
 shadowAddCss.addEventListener('click', () => {

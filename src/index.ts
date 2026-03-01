@@ -23,7 +23,7 @@ export function injectCSS(opts) {
   
   var q = globalThis.__VITE_CSS_QUEUE__ || [];
   var exec = globalThis.__VITE_CSS_EXECUTED__ || [];
-  var oldExecLength = exec.length; // Cache the old length
+  var oldExecLength = exec.length;
   
   /* Consume only the newly added chunks in the queue */
   for (var i = 0; i < q.length; i++) {
@@ -35,20 +35,29 @@ export function injectCSS(opts) {
   globalThis.__VITE_CSS_QUEUE__ = [];
   globalThis.__VITE_CSS_EXECUTED__ = exec;
   
-  /* If removeCSS was called previously, re-inject ONLY the older executed styles */
+  /* If removeCSS was called previously, re-inject the older executed styles */
   if (globalThis.__VITE_CSS_REMOVED__) {
     for (var j = 0; j < oldExecLength; j++) exec[j](opts || {});
     globalThis.__VITE_CSS_REMOVED__ = false;
   }
 }
 
-export function removeCSS() {
+export function removeCSS(opts) {
   if (typeof globalThis === 'undefined') return;
   globalThis.__VITE_CSS_REMOVED__ = true;
   var els = globalThis.__VITE_CSS_ELS__;
+  var target = opts && opts.target;
+  
   if (els) {
     for (var i = 0; i < els.length; i++) {
-      if (els[i].parentNode) els[i].parentNode.removeChild(els[i]);
+      var el = els[i];
+      if (target) {
+        /* Only remove if it belongs to the specific target */
+        if (el.parentNode === target) el.parentNode.removeChild(el);
+      } else {
+        /* Global removal */
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }
     }
   }
 }
@@ -58,7 +67,6 @@ export function getRawCSS() {
   return globalThis.__VITE_CSS_RAW__ || '';
 }
 `;
-
 const VIRTUAL_MODULE_DEV_CODE = `
 var _cssEnabled = false;
 var _styleCache = new Set();
@@ -104,16 +112,24 @@ export function injectCSS(opts) {
   });
 }
 
-export function removeCSS() {
+export function removeCSS(opts) {
   _cssEnabled = false;
+  var target = opts && opts.target;
+  
   _styleCache.forEach(function(n) {
-    n.setAttribute('media', 'not all');
+    if (target) {
+      /* Only mute if it was moved to this specific target */
+      if (n.parentNode === target) n.setAttribute('media', 'not all');
+    } else {
+      /* Global mute */
+      n.setAttribute('media', 'not all');
+    }
   });
-  _observe(); // Re-activate the observer to catch any new HMR updates
+  _observe();
 }
 
 export function getRawCSS() {
-  return ''; /* Dev Mode natively injects CSS, raw string not intercepted */
+  return '';
 }
 `;
 

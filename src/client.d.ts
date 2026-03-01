@@ -8,7 +8,7 @@ declare module 'virtual:css-injected-by-js' {
   }
 
   export function injectCSS(options?: InjectCSSOptions): void;
-  export function removeCSS(): void;
+  export function removeCSS(options?: InjectCSSOptions): void;
   
   /**
    * Returns the raw extracted CSS string. 
