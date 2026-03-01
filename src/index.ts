@@ -97,6 +97,12 @@ export default function cssInjectedByJsPlugin({
     let isBuild = false;
     let isVirtualModuleUsed = false;
 
+    if (styleId) {
+        warnLog(
+            '[vite-plugin-css-injected-by-js] The "styleId" option is deprecated and will be removed in 5.0.0, please use the "attributes" option instead with an "id" property.'
+        );
+    }
+
     const plugins: Plugin[] = [
         {
             name: 'vite-plugin-css-injected-by-js-virtual',
