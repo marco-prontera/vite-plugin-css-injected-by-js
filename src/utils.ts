@@ -247,6 +247,7 @@ export async function relativeCssInjection(
         injectAndFixMap(
             jsAsset,
             cssInjectionCode ?? '',
+            assetCss,
             buildOptions,
             topExecutionPriorityFlag,
             bundle,
@@ -313,7 +314,7 @@ export async function globalCssInjection(
         process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
             debugLog(`[vite-plugin-css-injected-by-js] Global CSS inject: ${jsAsset.fileName}`);
 
-        injectAndFixMap(jsAsset, cssInjectionCode, buildOptions, topExecutionPriorityFlag, bundle, isVirtualModuleUsed);
+        injectAndFixMap(jsAsset, cssInjectionCode, allCssCode, buildOptions, topExecutionPriorityFlag, bundle, isVirtualModuleUsed);
         /*jsAsset.code = buildOutputChunkWithCssInjectionCode(
             jsAsset.code,
             cssInjectionCode ?? '',
@@ -355,34 +356,26 @@ export function isCSSRequest(request: string): boolean {
 
     return CSS_LANGS_RE.test(request);
 }
-
 export function injectAndFixMap(
     chunk: OutputChunk,
     cssInjectionCode: string,
+    rawCss: string, // NEW PARAMETER
     buildOptions: BuildCSSInjectionConfiguration['buildOptions'] | undefined,
     topExecutionPriority: boolean,
     bundle: OutputBundle,
     isVirtualModuleUsed: boolean = false
 ) {
-    // Always clean up empty CSS placeholder comments.
     chunk.code = chunk.code.replace(/\/\*\s*empty css\s*\*\//g, '');
-
-    if (!cssInjectionCode) return;
+    
+    // Check both now, since in SSR cssInjectionCode might be empty but rawCss exists
+    if (!cssInjectionCode && !rawCss) return;
 
     let mapObj: { mappings: string; [k: string]: unknown } | null = null;
     const mapAssetName = chunk.fileName + '.map';
     const mapAsset = bundle[mapAssetName] as OutputAsset | undefined;
 
     if (buildOptions?.sourcemap && mapAsset?.type === 'asset') {
-        try {
-            const raw =
-                mapAsset.source instanceof Uint8Array
-                    ? new TextDecoder().decode(mapAsset.source)
-                    : String(mapAsset.source);
-            mapObj = JSON.parse(raw);
-        } catch (_) {
-            /* swallow */
-        }
+        try { mapObj = JSON.parse(String(mapAsset.source)); } catch (_) {}
     }
 
     const shiftMap = () => {
@@ -396,36 +389,63 @@ export function injectAndFixMap(
     };
 
     if (isVirtualModuleUsed) {
-        const patched = cssInjectionCode.replace(/document\.head/g, 'document_head');
+        const patched = cssInjectionCode ? cssInjectionCode.replace(/document\.head/g, 'document_head') : '';
 
-        // Advanced Payload: Intercepts appendChild to cache the elements for removeCSS()
-        const payload =
-            '(function(){' +
-            'var _ei=function(_o){' +
-            'var _t=(_o&&_o.target)||(typeof document!=="undefined"?document.head:void 0);' +
-            'if(!_t)return;' +
-            'if(_ei.d){' +
-            'if(_ei.els)for(var i=0;i<_ei.els.length;i++)_t.appendChild(_ei.els[i]);' +
-            'return;' +
-            '}' +
-            '_ei.d=true;_ei.els=[];' +
-            'var _orig=_t.appendChild;' +
-            '_t.appendChild=function(el){' +
-            '_ei.els.push(el);' +
-            '(globalThis.__VITE_CSS_ELS__=globalThis.__VITE_CSS_ELS__||[]).push(el);' +
-            'return _orig.call(_t,el);' +
-            '};' +
-            'try{(function(document_head){' + patched + '})(_t);}finally{_t.appendChild=_orig;}' +
-            '};' +
-            'if(typeof globalThis!=="undefined"){' +
-            '(globalThis.__VITE_CSS_QUEUE__=globalThis.__VITE_CSS_QUEUE__||[]).push(_ei);' +
-            'if(globalThis.__VITE_CSS_UNLOCKED__){_ei(globalThis.__VITE_CSS_INJECT_OPTS__||{});}' +
-            '}' +
-            '})();';
+        const payload = `
+            (function() {
+                /* SSR Support: Store raw CSS globally */
+                if (typeof globalThis !== 'undefined') {
+                    globalThis.__VITE_CSS_RAW__ = (globalThis.__VITE_CSS_RAW__ || '') + ${JSON.stringify(rawCss || '')};
+                }
 
-        // Flatten any stray newlines from the injection code into one line.
-        const singleLine = payload.replace(/\n/g, '');
+                /* DOM Injection Support */
+                if (typeof document !== 'undefined' && typeof globalThis !== 'undefined') {
+                    var executeInject = function(options) {
+                        var target = (options && options.target) || document.head;
+                        if (!target) return;
 
+                        if (executeInject.hasRun) {
+                            if (executeInject.elements) {
+                                for (var i = 0; i < executeInject.elements.length; i++) {
+                                    target.appendChild(executeInject.elements[i]);
+                                }
+                            }
+                            return;
+                        }
+
+                        executeInject.hasRun = true;
+                        executeInject.elements = [];
+                        globalThis.__VITE_CSS_ELS__ = globalThis.__VITE_CSS_ELS__ || [];
+
+                        var observer = new MutationObserver(function() {});
+                        observer.observe(document.documentElement || document, { childList: true, subtree: true });
+
+                        try {
+                            (function(document_head) {
+                                ${patched}
+                            })(target);
+                        } finally {
+                            var records = observer.takeRecords();
+                            for (var i = 0; i < records.length; i++) {
+                                for (var j = 0; j < records[i].addedNodes.length; j++) {
+                                    var node = records[i].addedNodes[j];
+                                    executeInject.elements.push(node);
+                                    globalThis.__VITE_CSS_ELS__.push(node);
+                                }
+                            }
+                            observer.disconnect();
+                        }
+                    };
+
+                    globalThis.__VITE_CSS_QUEUE__ = globalThis.__VITE_CSS_QUEUE__ || [];
+                    globalThis.__VITE_CSS_QUEUE__.push(executeInject);
+                }
+            })();
+        `;
+
+        const singleLine = payload.replace(/\n/g, '').replace(/\s{2,}/g, ' ');
+
+        // Decision 1: ALWAYS put at the top for virtual module to ensure queue is ready
         chunk.code = singleLine + '\n' + chunk.code;
         shiftMap();
     } else {

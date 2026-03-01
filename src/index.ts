@@ -20,24 +20,41 @@ const VIRTUAL_MODULE_BUILD_CODE = `
 export function injectCSS(opts) {
   if (typeof globalThis === 'undefined') return;
   globalThis.__VITE_CSS_INJECT_OPTS__ = opts || {};
-  globalThis.__VITE_CSS_UNLOCKED__ = true;
-  var q = globalThis.__VITE_CSS_QUEUE__;
-  if (q) {
-    // Note: We DO NOT empty the queue here anymore, because we need to 
-    // keep the functions to re-attach styles if removeCSS() was called!
-    for (var i = 0; i < q.length; i++) q[i](opts || {});
+  
+  var q = globalThis.__VITE_CSS_QUEUE__ || [];
+  var exec = globalThis.__VITE_CSS_EXECUTED__ || [];
+  
+  /* Consume only the newly added chunks in the queue */
+  for (var i = 0; i < q.length; i++) {
+    q[i](opts || {});
+    exec.push(q[i]);
+  }
+  
+  /* Empty the queue and save the executed ones */
+  globalThis.__VITE_CSS_QUEUE__ = [];
+  globalThis.__VITE_CSS_EXECUTED__ = exec;
+  
+  /* If removeCSS was called previously, re-inject the already executed styles */
+  if (globalThis.__VITE_CSS_REMOVED__) {
+    for (var i = 0; i < exec.length; i++) exec[i](opts || {});
+    globalThis.__VITE_CSS_REMOVED__ = false;
   }
 }
 
 export function removeCSS() {
   if (typeof globalThis === 'undefined') return;
-  globalThis.__VITE_CSS_UNLOCKED__ = false;
+  globalThis.__VITE_CSS_REMOVED__ = true;
   var els = globalThis.__VITE_CSS_ELS__;
   if (els) {
     for (var i = 0; i < els.length; i++) {
       if (els[i].parentNode) els[i].parentNode.removeChild(els[i]);
     }
   }
+}
+
+export function getRawCSS() {
+  if (typeof globalThis === 'undefined') return '';
+  return globalThis.__VITE_CSS_RAW__ || '';
 }
 `;
 
@@ -92,6 +109,10 @@ export function removeCSS() {
     n.setAttribute('media', 'not all');
   });
   _observe(); // Re-activate the observer to catch any new HMR updates
+}
+
+export function getRawCSS() {
+  return ''; /* Dev Mode natively injects CSS, raw string not intercepted */
 }
 `;
 
@@ -170,7 +191,7 @@ export default function cssInjectedByJsPlugin({
                 config = _config;
             },
             async generateBundle(opts, bundle) {
-                if (config.build.ssr) {
+                if (config.build.ssr && !isVirtualModuleUsed) {
                     return;
                 }
 

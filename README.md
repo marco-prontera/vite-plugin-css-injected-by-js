@@ -71,7 +71,7 @@ export default defineConfig({
 
 ```ts
 // src/main.ts
-import { injectCSS } from 'virtual:css-injected-by-js'
+import { injectCSS, removeCSS } from 'virtual:css-injected-by-js'
 
 // Your application setup...
 const app = createApp()
@@ -79,7 +79,20 @@ app.mount('#app')
 
 // Inject all bundled CSS when you're ready
 injectCSS()
+
+// If you need to clean the environment you can also remove the CSS
+removeCSS()
 ```
+
+### ⚠️ Advanced Configuration Limitations
+
+When using the `virtual:css-injected-by-js` module, please be aware of the following architectural boundaries:
+
+* **`topExecutionPriority` is ignored:** When using the virtual module, the plugin forces the injection payload to the absolute top of your chunks. This is mathematically required to ensure the CSS Queue is initialized before your application code calls `injectCSS()`.
+* **Custom `injectCode` Boundaries:** The `removeCSS()` function uses a synchronous `MutationObserver` on the target element. It will fail to track and remove your styles if your custom code:
+  1. Injects into an element other than the configured `target`.
+  2. Uses asynchronous logic (`setTimeout`, Promises, `requestAnimationFrame`).
+  3. Uses Constructable Stylesheets (`new CSSStyleSheet()`) instead of actual DOM nodes.
 
 ### Shadow DOM example
 

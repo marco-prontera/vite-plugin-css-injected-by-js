@@ -7,14 +7,12 @@ declare module 'virtual:css-injected-by-js' {
     target?: HTMLElement | ShadowRoot;
   }
 
-  /**
-   * Injects the bundled CSS into the DOM.
-   * In Vite Dev Mode, this un-mutes Vite's native CSS.
-   */
   export function injectCSS(options?: InjectCSSOptions): void;
-
-  /**
-   * Removes or mutes the injected CSS from the DOM.
-   */
   export function removeCSS(): void;
+  
+  /**
+   * Returns the raw extracted CSS string. 
+   * Highly useful for Server-Side Rendering (SSR) where DOM injection is impossible.
+   */
+  export function getRawCSS(): string;
 }
