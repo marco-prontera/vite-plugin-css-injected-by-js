@@ -27,10 +27,6 @@ const cacheRoot = path.join(repoRoot, 'test', 'fixtures-cache');
 const distRoot = path.join(repoRoot, 'test', 'fixtures-dist');
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                           */
-/* ------------------------------------------------------------------ */
-
 async function exists(p) {
     try {
         await access(p);
@@ -66,10 +62,7 @@ async function resolveFixtureRoot(name) {
     return null;
 }
 
-/* ------------------------------------------------------------------ */
-/*  CLI                                                               */
-/* ------------------------------------------------------------------ */
-
+// Start cli processing
 const args = process.argv.slice(2);
 const flags = new Set(args.filter((a) => a.startsWith('--')));
 const positional = args.filter((a) => !a.startsWith('--'));
@@ -86,10 +79,7 @@ if (!fixtureName) {
     process.exit(0);
 }
 
-/* ------------------------------------------------------------------ */
-/*  Resolve fixture root                                              */
-/* ------------------------------------------------------------------ */
-
+// Resolve fixture root
 const fixtureRoot = await resolveFixtureRoot(fixtureName);
 
 if (!fixtureRoot) {
@@ -113,18 +103,10 @@ if (fixtureHasPkg && !fixtureHasNodeModules) {
     process.exit(1);
 }
 
-/* ------------------------------------------------------------------ */
-/*  Load the built plugin                                             */
-/* ------------------------------------------------------------------ */
-
 await ensurePluginBuild();
 
 const pluginUrl = pathToFileURL(path.join(repoRoot, 'dist', 'esm', 'index.js')).href;
 const { default: cssInjectedByJsPlugin } = await import(pluginUrl);
-
-/* ------------------------------------------------------------------ */
-/*  Dev mode                                                          */
-/* ------------------------------------------------------------------ */
 
 if (mode === 'dev') {
     const { createServer } = await import('vite');
@@ -142,10 +124,6 @@ if (mode === 'dev') {
     server.printUrls();
     server.bindCLIShortcuts({ print: true });
 } else {
-    /* -------------------------------------------------------------- */
-    /*  Build (also the first step of --preview)                      */
-    /* -------------------------------------------------------------- */
-
     const { build } = await import('vite');
 
     const outDir = path.join(distRoot, fixtureName);
@@ -166,10 +144,7 @@ if (mode === 'dev') {
 
     console.log(`\n[fixture] Build output: ${path.relative(repoRoot, outDir)}`);
 
-    /* -------------------------------------------------------------- */
-    /*  Preview mode — serve the built output                         */
-    /* -------------------------------------------------------------- */
-
+    // Preview mode — serve the built output with Vite's preview server
     if (mode === 'preview') {
         const { preview } = await import('vite');
 

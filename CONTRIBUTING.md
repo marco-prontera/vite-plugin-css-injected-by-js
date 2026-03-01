@@ -37,5 +37,9 @@ npm run build
 
 ### Running "real" projects
 
-This plugin also implement a command that allow you to run:
+This plugin also implement a command that allow you to run real projects,
+trying to replicate some use cases it covers:
 
+- Run in dev: `npm run fixture:dev <fixture-name>`
+- Run in preview: `npm run fixture:preview <fixture-name>`
+- Run in prod: `npm run fixtures:prod <fixture-name>`
