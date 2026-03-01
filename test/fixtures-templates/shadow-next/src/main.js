@@ -1,5 +1,5 @@
 import './style.css';
-import { injectCSS } from 'virtual:css-injected-by-js';
+import { injectCSS, removeCSS } from 'virtual:css-injected-by-js';
 
 const app = document.querySelector('#app');
 if (app) {
@@ -13,7 +13,17 @@ const shadowRoot = host.attachShadow({ mode: 'open' });
 const shadowContent = document.createElement('div');
 shadowContent.className = 'shadow-next-inner';
 shadowContent.textContent = 'Shadow next content';
+const shadowBtn = document.createElement('button');
+shadowBtn.textContent = 'Click me to remove injected CSS';
+shadowBtn.addEventListener('click', removeCSS);
+const shadowAddCss = document.createElement('button');
+shadowAddCss.textContent = 'Click me to re-inject CSS';
+shadowAddCss.addEventListener('click', () => {
+  injectCSS({ target: shadowRoot });
+});
 shadowRoot.appendChild(shadowContent);
+shadowRoot.appendChild(shadowBtn);
+shadowRoot.appendChild(shadowAddCss);
 
 document.body.appendChild(host);
 

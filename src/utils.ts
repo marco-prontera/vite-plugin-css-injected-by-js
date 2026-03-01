@@ -385,12 +385,6 @@ export function injectAndFixMap(
         }
     }
 
-    /**
-     * Apply the "Semicolon Shift" (Issue #155 fix):
-     * Prepend one `;` to the VLQ `mappings` string to push every existing
-     * mapping down by exactly one row – matching the single line we
-     * prepended to the chunk code.
-     */
     const shiftMap = () => {
         if (mapObj && mapAsset) {
             mapObj.mappings = ';' + mapObj.mappings;
@@ -402,26 +396,30 @@ export function injectAndFixMap(
     };
 
     if (isVirtualModuleUsed) {
-        // Shadow `document.head` inside an IIFE so the user's custom target
-        // (e.g. a ShadowRoot passed via injectCSS({ target })) flows into
-        // the original injection template without any code-gen changes.
         const patched = cssInjectionCode.replace(/document\.head/g, 'document_head');
 
+        // Advanced Payload: Intercepts appendChild to cache the elements for removeCSS()
         const payload =
             '(function(){' +
             'var _ei=function(_o){' +
             'var _t=(_o&&_o.target)||(typeof document!=="undefined"?document.head:void 0);' +
             'if(!_t)return;' +
-            '(function(document_head){' +
-            patched +
-            '})(_t)' +
+            'if(_ei.d){' +
+            'if(_ei.els)for(var i=0;i<_ei.els.length;i++)_t.appendChild(_ei.els[i]);' +
+            'return;' +
+            '}' +
+            '_ei.d=true;_ei.els=[];' +
+            'var _orig=_t.appendChild;' +
+            '_t.appendChild=function(el){' +
+            '_ei.els.push(el);' +
+            '(globalThis.__VITE_CSS_ELS__=globalThis.__VITE_CSS_ELS__||[]).push(el);' +
+            'return _orig.call(_t,el);' +
+            '};' +
+            'try{(function(document_head){' + patched + '})(_t);}finally{_t.appendChild=_orig;}' +
             '};' +
             'if(typeof globalThis!=="undefined"){' +
-            'if(globalThis.__VITE_CSS_UNLOCKED__){' +
-            '_ei(globalThis.__VITE_CSS_INJECT_OPTS__||{});' +
-            '}else{' +
             '(globalThis.__VITE_CSS_QUEUE__=globalThis.__VITE_CSS_QUEUE__||[]).push(_ei);' +
-            '}' +
+            'if(globalThis.__VITE_CSS_UNLOCKED__){_ei(globalThis.__VITE_CSS_INJECT_OPTS__||{});}' +
             '}' +
             '})();';
 
@@ -438,7 +436,6 @@ export function injectAndFixMap(
             shiftMap();
         } else {
             chunk.code += '\n' + singleLine;
-            // No map shift needed when appending to the bottom.
         }
     }
 }

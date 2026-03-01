@@ -23,8 +23,20 @@ export function injectCSS(opts) {
   globalThis.__VITE_CSS_UNLOCKED__ = true;
   var q = globalThis.__VITE_CSS_QUEUE__;
   if (q) {
-    globalThis.__VITE_CSS_QUEUE__ = [];
+    // Note: We DO NOT empty the queue here anymore, because we need to 
+    // keep the functions to re-attach styles if removeCSS() was called!
     for (var i = 0; i < q.length; i++) q[i](opts || {});
+  }
+}
+
+export function removeCSS() {
+  if (typeof globalThis === 'undefined') return;
+  globalThis.__VITE_CSS_UNLOCKED__ = false;
+  var els = globalThis.__VITE_CSS_ELS__;
+  if (els) {
+    for (var i = 0; i < els.length; i++) {
+      if (els[i].parentNode) els[i].parentNode.removeChild(els[i]);
+    }
   }
 }
 `;
@@ -33,6 +45,12 @@ const VIRTUAL_MODULE_DEV_CODE = `
 var _cssEnabled = false;
 var _styleCache = new Set();
 var _observer = null;
+
+function _observe() {
+  if (_observer && typeof document !== 'undefined') {
+    _observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+}
 
 if (typeof document !== 'undefined') {
   document.querySelectorAll('style[data-vite-dev-id]').forEach(function(n) {
@@ -52,7 +70,7 @@ if (typeof document !== 'undefined') {
     });
   });
 
-  _observer.observe(document.documentElement, { childList: true, subtree: true });
+  _observe();
 }
 
 export function injectCSS(opts) {
@@ -66,7 +84,14 @@ export function injectCSS(opts) {
       target.appendChild(n);
     }
   });
-  _styleCache.clear();
+}
+
+export function removeCSS() {
+  _cssEnabled = false;
+  _styleCache.forEach(function(n) {
+    n.setAttribute('media', 'not all');
+  });
+  _observe(); // Re-activate the observer to catch any new HMR updates
 }
 `;
 
