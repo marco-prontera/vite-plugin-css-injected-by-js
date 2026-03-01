@@ -23,6 +23,7 @@ export function injectCSS(opts) {
   
   var q = globalThis.__VITE_CSS_QUEUE__ || [];
   var exec = globalThis.__VITE_CSS_EXECUTED__ || [];
+  var oldExecLength = exec.length; // Cache the old length
   
   /* Consume only the newly added chunks in the queue */
   for (var i = 0; i < q.length; i++) {
@@ -34,9 +35,9 @@ export function injectCSS(opts) {
   globalThis.__VITE_CSS_QUEUE__ = [];
   globalThis.__VITE_CSS_EXECUTED__ = exec;
   
-  /* If removeCSS was called previously, re-inject the already executed styles */
+  /* If removeCSS was called previously, re-inject ONLY the older executed styles */
   if (globalThis.__VITE_CSS_REMOVED__) {
-    for (var i = 0; i < exec.length; i++) exec[i](opts || {});
+    for (var j = 0; j < oldExecLength; j++) exec[j](opts || {});
     globalThis.__VITE_CSS_REMOVED__ = false;
   }
 }
