@@ -284,8 +284,7 @@ describeIntegration('fixture templates', () => {
             expect(entryChunk.code).toContain('shadow-next-inner');
 
             // The virtual module import should have been resolved — the bundle
-            // must contain the Queue & Unlock infrastructure
-            expect(entryChunk.code).toContain('__VITE_CSS_UNLOCKED__');
+            // must contain the Queue
             expect(entryChunk.code).toContain('__VITE_CSS_QUEUE__');
 
             // The injectCSS call from the user code should be present

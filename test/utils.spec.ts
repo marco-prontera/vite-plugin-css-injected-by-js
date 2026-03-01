@@ -291,7 +291,7 @@ describe('utils', () => {
                 } as OutputAsset,
             };
 
-            injectAndFixMap(chunk, 'var x=1;', { sourcemap: true }, true, bundle, false);
+            injectAndFixMap(chunk, 'var x=1;', 'var x=1;', { sourcemap: true }, true, bundle, false);
 
             const map = JSON.parse((bundle['index.js.map'] as OutputAsset).source as string);
             expect(map.mappings).toBe(';' + originalMappings);
@@ -313,7 +313,7 @@ describe('utils', () => {
                 } as OutputAsset,
             };
 
-            injectAndFixMap(chunk, 'var x=1;', { sourcemap: true }, false, bundle, false);
+            injectAndFixMap(chunk, 'var x=1;', 'var x=1;', { sourcemap: true }, false, bundle, false);
 
             const map = JSON.parse((bundle['index.js.map'] as OutputAsset).source as string);
             expect(map.mappings).toBe(originalMappings);
@@ -335,7 +335,7 @@ describe('utils', () => {
                 } as OutputAsset,
             };
 
-            injectAndFixMap(chunk, 'var css="body{color:red}";', { sourcemap: true }, false, bundle, true);
+            injectAndFixMap(chunk, 'var css="body{color:red}";', 'var css="body{color:red}";', { sourcemap: true }, false, bundle, true);
 
             const map = JSON.parse((bundle['entry.js.map'] as OutputAsset).source as string);
             expect(map.mappings).toBe(';' + originalMappings);
@@ -348,7 +348,7 @@ describe('utils', () => {
             const bundle: OutputBundle = { 'bundle.js': chunk };
             const multiLineCode = 'var a = 1;\nvar b = 2;\nvar c = 3;';
 
-            injectAndFixMap(chunk, multiLineCode, undefined, true, bundle, false);
+            injectAndFixMap(chunk, multiLineCode, multiLineCode, undefined, true, bundle, false);
 
             // The prepended part (before the newline separator) should have no \n
             const prependedPart = chunk.code.split('\n')[0];
@@ -359,7 +359,7 @@ describe('utils', () => {
             const chunk = makeChunk('console.log(1);', 'noop.js');
             const bundle: OutputBundle = { 'noop.js': chunk };
 
-            injectAndFixMap(chunk, '', undefined, true, bundle, false);
+            injectAndFixMap(chunk, '', '', undefined, true, bundle, false);
 
             expect(chunk.code).toBe('console.log(1);');
         });
@@ -368,7 +368,7 @@ describe('utils', () => {
             const chunk = makeChunk('/* empty css */console.log(1);/* empty css     */', 'noop.js');
             const bundle: OutputBundle = { 'noop.js': chunk };
 
-            injectAndFixMap(chunk, '', undefined, true, bundle, false);
+            injectAndFixMap(chunk, '', '', undefined, true, bundle, false);
 
             expect(chunk.code).toBe('console.log(1);');
         });
@@ -378,7 +378,7 @@ describe('utils', () => {
             const bundle: OutputBundle = { 'vm.js': chunk };
             const codeWithHead = 'document.head.appendChild(el);';
 
-            injectAndFixMap(chunk, codeWithHead, undefined, true, bundle, true);
+            injectAndFixMap(chunk, codeWithHead, '', undefined, true, bundle, true);
 
             // Verify the original references are shadowed
             expect(chunk.code).toContain('document_head');
@@ -390,9 +390,8 @@ describe('utils', () => {
             const chunk = makeChunk('console.log(1);', 'vm2.js');
             const bundle: OutputBundle = { 'vm2.js': chunk };
 
-            injectAndFixMap(chunk, 'var css="a";', undefined, true, bundle, true);
+            injectAndFixMap(chunk, 'var css="a";', 'var css="a";', undefined, true, bundle, true);
 
-            expect(chunk.code).toContain('__VITE_CSS_UNLOCKED__');
             expect(chunk.code).toContain('__VITE_CSS_QUEUE__');
         });
 
@@ -402,7 +401,7 @@ describe('utils', () => {
             (chunk as any).map = { version: 3, mappings: originalMappings, sources: [], names: [] };
             const bundle: OutputBundle = { 'inline.js': chunk };
 
-            injectAndFixMap(chunk, 'var z=0;', { sourcemap: true }, true, bundle, false);
+            injectAndFixMap(chunk, 'var z=0;', 'var z=0;', { sourcemap: true }, true, bundle, false);
 
             expect((chunk.map as any).mappings).toBe(';' + originalMappings);
         });
