@@ -490,13 +490,13 @@ npm install
 
 ### Testing
 
-- Unit tests
+- Plugin tests
 
 ```terminal
 npm run test
 ```
 
-- Integration tests
+- Integration tests using real projects
 
 ```terminal
 npm run test
