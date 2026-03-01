@@ -3,6 +3,8 @@
   "compilerOptions": {
     "declarationDir": "dist/esm/declarations",
     "outDir": "dist/esm",
-    "target": "esnext"
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler"
   }
 }

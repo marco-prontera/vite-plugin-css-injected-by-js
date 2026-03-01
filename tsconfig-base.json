@@ -8,8 +8,6 @@
 		"inlineSourceMap": false,
 		"lib": ["esnext", "dom"],
 		"listEmittedFiles": false,
-		"module": "esnext",
-		"moduleResolution": "node",
 		"noUnusedLocals": true,
 		"noUnusedParameters": false,
 		"outDir": "dist",
@@ -20,7 +18,7 @@
 		"strict": true,
 		"sourceMap": false,
 		"traceResolution": false,
-		"types": ["node", "vite/types/metadata"]
+		"types": ["node"]
 	},
 	"compileOnSave": false,
 	"include": ["./src"],

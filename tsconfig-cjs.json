@@ -5,7 +5,7 @@
 		"module": "commonjs",
 		"outDir": "dist/cjs",
 		"target": "es2015",
-		"moduleResolution": "node",
+		"moduleResolution": "node10",
 		"types": ["node", "vite/types/metadata"]
 	}
 }
