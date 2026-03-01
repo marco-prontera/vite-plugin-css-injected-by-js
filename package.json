@@ -22,9 +22,9 @@
         "test:integration": "node scripts/prepare-integration-fixtures.mjs && INTEGRATION=1 vitest run test/integration",
         "build": "rimraf dist && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./cjs-esm-fixup",
         "format": "prettier '{src,test}/*.ts' --write",
-        "fixture:dev": "node scripts/run-fixture.mjs --dev",
-        "fixture:build": "node scripts/run-fixture.mjs --build",
-        "fixture:preview": "node scripts/run-fixture.mjs --preview"
+        "playground:dev": "node scripts/run-fixture.mjs --dev",
+        "playground:build": "node scripts/run-fixture.mjs --build",
+        "playground:preview": "node scripts/run-fixture.mjs --preview"
     },
     "repository": {
         "type": "git",

@@ -1,45 +1,50 @@
 # Contributing
 
-This is one of the first Vite plugins I do, feel free to open issues and PR. 
-The important thing is that everything is explained through the comment and correlated issue.
+Thank you for your interest in contributing to `vite-plugin-css-injected-by-js`! Whether you are fixing a bug, proposing a new feature, or improving the documentation, your help is greatly appreciated.
 
-## Steps to get a review
+To ensure a smooth review process, please make sure your changes are well-commented and tied to an existing issue.
 
-- Open Issue: The first step is to open an issue and write the problem, or the feature that you want the project implement.
-- Open a branch from develop: The name of the branch must be feature/[number of issue]
-- Open a Pull Request: After made your changes open a PR from your working branch to 'develop'
+## 🤝 Steps to get a review
 
-## Making changes
+1. **Open an Issue:** Before writing any code, please open an issue describing the bug you want to fix or the feature you want to implement. This ensures we agree on the approach before you spend time coding.
+2. **Branch from `develop`:** Create a new working branch based on the `develop` branch. Please follow the naming convention: `feature/[issue-number]` (e.g., `feature/155`).
+3. **Open a Pull Request:** Once your changes are ready, open a Pull Request from your working branch targeting the `develop` branch. Include a clear explanation of what you changed and reference the original issue.
 
-When you make changes to plugin locally, you may want to build the js from the typescript file of the plugin.
+---
 
-Here the guidelines:
+## 🛠 Local Development
 
-### Install
+To make changes to the plugin locally, you will need to install the dependencies, build the TypeScript source into JavaScript, and run the test suite.
+
+### 1. Install Dependencies
 
 ```terminal
 npm install
 ```
 
-### Testing
+### 2. Build the Plugin
 
-- Unit tests: `npm test`
-- Integration fixtures: `npm run test:integration`
-
-Integration fixtures are generated from template projects in `test/fixtures-templates` at test runtime, so they stay
-lightweight in the repository while still exercising real Vite builds.
-
-### Build plugin
+Before running tests or testing your changes in the fixtures, you must build the plugin:
 
 ```terminal
 npm run build
 ```
 
-### Running "real" projects
+### 3. Testing
 
-This plugin also implement a command that allow you to run real projects,
-trying to replicate some use cases it covers:
+Please ensure all tests pass before submitting your PR. If you are adding a new feature, please include corresponding tests.
 
-- Run in dev: `npm run fixture:dev <fixture-name>`
-- Run in preview: `npm run fixture:preview <fixture-name>`
-- Run in prod: `npm run fixtures:prod <fixture-name>`
+* **Unit tests:** `npm test`
+* **Integration fixtures:** `npm run test:integration`
+
+> **Note on Integration Tests:** Fixtures are generated dynamically from the template projects inside `test/fixtures-templates/` at runtime. This keeps the repository lightweight while still thoroughly exercising real Vite build pipelines.
+
+### 4. The Playground (Running "Real" Projects)
+
+The repository includes a command-line utility to test the plugin against real project environments, covering various practical use cases.
+
+*(Remember to run `npm run build` before executing these commands so your latest changes are picked up!)*
+
+* **Run in Dev Mode:** `npm run playground:dev <project-name>`
+* **Run Production Build:** `npm run playground:prod <project-name>`
+* **Preview Production Build:** `npm run playground:preview <project-name>`

@@ -3,7 +3,7 @@ import { tmpdir } from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const fixturesRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures-templates');
+const fixturesRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../playground');
 const fixturesCacheRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures-cache');
 
 async function exists(filePath: string): Promise<boolean> {

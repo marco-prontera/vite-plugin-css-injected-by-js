@@ -114,6 +114,33 @@ class MyWidget extends HTMLElement {
 customElements.define('my-widget', MyWidget)
 ```
 
+### Server-Side Rendering (SSR) extraction
+
+In SSR environments (like Next.js, Nuxt, or custom Node servers), DOM methods like `document.head.appendChild` are not available. Calling `injectCSS()` will safely do nothing. 
+Instead, you can extract the raw CSS string to manually inject it into your server-rendered HTML payload.
+
+\`\`\`ts
+import { getRawCSS } from 'virtual:css-injected-by-js'
+
+export function render() {
+  const appHtml = renderToString(MyApp)
+  const cssString = getRawCSS()
+
+  return \`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>\${cssString}</style>
+      </head>
+      <body>
+        <div id="app">\${appHtml}</div>
+      </body>
+    </html>
+  \`
+}
+\`\`\`
+> **Note:** In Vite Dev Mode (`npm run dev`), `getRawCSS()` will return an empty string because Vite handles CSS natively via HMR. Test your SSR CSS extraction using the production build (`npm run build`).
+
 ### TypeScript support
 
 The plugin ships type declarations for the virtual module. Add it to your `tsconfig.json`:
@@ -129,13 +156,23 @@ The plugin ships type declarations for the virtual module. Add it to your `tscon
 The `InjectCSSOptions` interface:
 
 ```ts
-interface InjectCSSOptions {
+declare module 'virtual:css-injected-by-js' {
+  export interface InjectCSSOptions {
+    /**
+     * The DOM element where the <style> tag will be injected.
+     * @default document.head
+     */
+    target?: HTMLElement | ShadowRoot;
+  }
+
+  export function injectCSS(options?: InjectCSSOptions): void;
+  export function removeCSS(): void;
+  
   /**
-   * The target element where the <style> tag will be appended.
-   * Useful for injecting CSS into a Shadow DOM root.
-   * @default document.head
+   * Returns the raw extracted CSS string. 
+   * Highly useful for Server-Side Rendering (SSR) where DOM injection is impossible.
    */
-  target?: HTMLElement | ShadowRoot
+  export function getRawCSS(): string;
 }
 ```
 
@@ -405,6 +442,8 @@ set `suppressUnusedCssWarning` to `true`.
 
 ### styleId (string | function)
 
+⚠️**The "styleId" option is deprecated and will be removed in 5.0.0, please use the "attributes" option instead with an "id" property.⚠️**
+
 If you provide a `string` for `styleId` param, the code of injection will set the `id` attribute of the `style` element
 with the value of the parameter provided. This is an example:
 
@@ -450,6 +489,27 @@ export default defineConfig({
 </head>
 ```
 
+### attributes (object)
+
+The `attributes` parameter allows you to add custom HTML attributes to the injected `<style>` tag. This is the recommended replacement for the deprecated `styleId` option.
+You can pass static strings or functions that return strings.
+
+```ts
+import { defineConfig } from 'vite'
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default defineConfig({
+    plugins: [
+        cssInjectedByJsPlugin({
+            attributes: {
+                'id': 'my-custom-style-id',
+                'data-theme': 'dark',
+                'data-timestamp': () => Date.now().toString()
+            }
+        }),
+    ]
+})
+
 ### topExecutionPriority (boolean)
 
 The default behavior adds the injection of CSS before your bundle code. If you provide `topExecutionPriority` equal
@@ -492,7 +552,6 @@ will be injected by our default injection code.
 ## Contributing
 
 Want to modify the plugin? Check out our [CONTRIBUTING.md](CONTRIBUTING.md) for a complete guide on how to compile the TypeScript source, run the test suite, and test your changes locally.
-When you make changes to plugin locally, you may want to build the js from the typescript file of the plugin, run tests and more.
 
 ## A note for plugin-legacy users
 

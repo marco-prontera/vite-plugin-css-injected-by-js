@@ -28,4 +28,4 @@ shadowRoot.appendChild(shadowAddCss);
 document.body.appendChild(host);
 
 // Use the virtual module to inject all bundled CSS into the ShadowRoot
-injectCSS({ target: shadowRoot });
+//injectCSS({ target: shadowRoot });
