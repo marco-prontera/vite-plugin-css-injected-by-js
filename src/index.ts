@@ -157,7 +157,7 @@ export default function cssInjectedByJsPlugin({
                         injectCode,
                         injectCodeFunction,
                         injectionCodeFormat,
-                        attributes: { id: styleId, ...attributes },
+                        attributes: styleId ? { id: styleId, ...attributes } : attributes,
                         useStrictCSP,
                     });
 
