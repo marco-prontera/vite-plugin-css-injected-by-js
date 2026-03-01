@@ -23,40 +23,38 @@ export function injectCSS(opts) {
   
   var q = globalThis.__VITE_CSS_QUEUE__ || [];
   var exec = globalThis.__VITE_CSS_EXECUTED__ || [];
-  var oldExecLength = exec.length;
   
-  /* Consume only the newly added chunks in the queue */
+  /* 1. Run already loaded chunks for the given target */
+  for (var i = 0; i < exec.length; i++) {
+    exec[i](opts || {});
+  }
+  
+  /* 2. Run new chunks and move them to executed */
   for (var i = 0; i < q.length; i++) {
     q[i](opts || {});
     exec.push(q[i]);
   }
   
-  /* Empty the queue and save the executed ones */
   globalThis.__VITE_CSS_QUEUE__ = [];
   globalThis.__VITE_CSS_EXECUTED__ = exec;
-  
-  /* If removeCSS was called previously, re-inject the older executed styles */
-  if (globalThis.__VITE_CSS_REMOVED__) {
-    for (var j = 0; j < oldExecLength; j++) exec[j](opts || {});
-    globalThis.__VITE_CSS_REMOVED__ = false;
-  }
 }
 
 export function removeCSS(opts) {
   if (typeof globalThis === 'undefined') return;
-  globalThis.__VITE_CSS_REMOVED__ = true;
-  var els = globalThis.__VITE_CSS_ELS__;
+  var els = globalThis.__VITE_CSS_ELS__ || [];
   var target = opts && opts.target;
   
-  if (els) {
-    for (var i = 0; i < els.length; i++) {
-      var el = els[i];
-      if (target) {
-        /* Only remove if it belongs to the specific target */
-        if (el.parentNode === target) el.parentNode.removeChild(el);
-      } else {
-        /* Global removal */
-        if (el.parentNode) el.parentNode.removeChild(el);
+  for (var i = 0; i < els.length; i++) {
+    var item = els[i];
+    if (target) {
+      /* Only remove if it matches the requested target */
+      if (item.target === target && item.el.parentNode) {
+        item.el.parentNode.removeChild(item.el);
+      }
+    } else {
+      /* Global removal: rip out everything */
+      if (item.el.parentNode) {
+        item.el.parentNode.removeChild(item.el);
       }
     }
   }

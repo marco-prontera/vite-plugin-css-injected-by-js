@@ -404,21 +404,26 @@ export function injectAndFixMap(
                         var target = (options && options.target) || document.head;
                         if (!target) return;
 
-                        if (executeInject.hasRun) {
-                            if (executeInject.elements) {
-                                for (var i = 0; i < executeInject.elements.length; i++) {
-                                    target.appendChild(executeInject.elements[i]);
+                        executeInject.cache = executeInject.cache || [];
+                        
+                        /* 1. Check if we already created styles for THIS specific target */
+                        for (var i = 0; i < executeInject.cache.length; i++) {
+                            if (executeInject.cache[i].target === target) {
+                                var els = executeInject.cache[i].elements;
+                                for (var j = 0; j < els.length; j++) {
+                                    target.appendChild(els[j]);
                                 }
+                                return; /* Exit early, styles re-attached! */
                             }
-                            return;
                         }
 
-                        executeInject.hasRun = true;
-                        executeInject.elements = [];
-                        globalThis.__VITE_CSS_ELS__ = globalThis.__VITE_CSS_ELS__ || [];
-
+                        /* 2. First time for this target: Execute injection to create NEW elements */
+                        var newElements = [];
                         var observer = new MutationObserver(function() {});
-                        observer.observe(document.documentElement || document, { childList: true, subtree: true });
+                        
+                        /* Fix: ShadowRoots (nodeType 11) must be observed directly due to encapsulation */
+                        var obsTarget = target.nodeType === 11 ? target : (document.documentElement || document);
+                        observer.observe(obsTarget, { childList: true, subtree: true });
 
                         try {
                             (function(document_head) {
@@ -426,15 +431,21 @@ export function injectAndFixMap(
                             })(target);
                         } finally {
                             var records = observer.takeRecords();
+                            globalThis.__VITE_CSS_ELS__ = globalThis.__VITE_CSS_ELS__ || [];
+                            
                             for (var i = 0; i < records.length; i++) {
                                 for (var j = 0; j < records[i].addedNodes.length; j++) {
                                     var node = records[i].addedNodes[j];
-                                    executeInject.elements.push(node);
-                                    globalThis.__VITE_CSS_ELS__.push(node);
+                                    newElements.push(node);
+                                    /* Store the target reference with the node for targeted removeCSS */
+                                    globalThis.__VITE_CSS_ELS__.push({ target: target, el: node }); 
                                 }
                             }
                             observer.disconnect();
                         }
+
+                        /* 3. Save to cache for this specific target */
+                        executeInject.cache.push({ target: target, elements: newElements });
                     };
 
                     globalThis.__VITE_CSS_QUEUE__ = globalThis.__VITE_CSS_QUEUE__ || [];
