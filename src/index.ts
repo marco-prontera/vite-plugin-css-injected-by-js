@@ -84,6 +84,7 @@ export default function cssInjectedByJsPlugin({
     jsAssetsFilterFunction,
     preRenderCSSCode,
     relativeCSSInjection,
+    attributes,
     styleId,
     suppressUnusedCssWarning,
     topExecutionPriority,
@@ -92,7 +93,7 @@ export default function cssInjectedByJsPlugin({
     let config: ResolvedConfig;
 
     const topExecutionPriorityFlag = typeof topExecutionPriority == 'boolean' ? topExecutionPriority : true;
-    
+
     let isBuild = false;
     let isVirtualModuleUsed = false;
 
@@ -150,7 +151,7 @@ export default function cssInjectedByJsPlugin({
                         injectCode,
                         injectCodeFunction,
                         injectionCodeFormat,
-                        styleId,
+                        attributes: { id: styleId, ...attributes },
                         useStrictCSP,
                     });
 
@@ -188,12 +189,10 @@ export default function cssInjectedByJsPlugin({
                     }
                 } else {
                     const allCssAssets = Object.keys(bundle).filter(
-                        (i) =>
-                            bundle[i].type == 'asset' &&
-                            bundle[i].fileName.endsWith('.css')
+                        (i) => bundle[i].type == 'asset' && bundle[i].fileName.endsWith('.css')
                     );
 
-                    unusedCssAssets = allCssAssets.filter(cssAsset => !cssAssets.includes(cssAsset));
+                    unusedCssAssets = allCssAssets.filter((cssAsset) => !cssAssets.includes(cssAsset));
 
                     await globalCssInjection(
                         bundle,

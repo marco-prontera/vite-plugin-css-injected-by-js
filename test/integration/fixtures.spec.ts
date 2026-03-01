@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { execFile } from 'child_process';
 import { access, readFile, readdir, writeFile } from 'fs/promises';
 import type { OutputAsset, OutputChunk, RollupOutput } from 'rollup';

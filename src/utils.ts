@@ -3,10 +3,8 @@ import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
 import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginConfiguration } from './interface';
 
 interface InjectCodeOptions {
-    styleId?: string | (() => string);
     useStrictCSP?: boolean;
-    //TODO: (BC) Migrate styleId into attributes.
-    attributes?: { [key: string]: string } | undefined;
+    attributes?: { [key: string]: string | (() => string) } | undefined;
 }
 
 export type InjectCode = (cssCode: string, options: InjectCodeOptions) => string;
@@ -14,16 +12,16 @@ export type InjectCodeFunction = (cssCode: string, options: InjectCodeOptions) =
 
 const cssInjectedByJsId = '\0vite/all-css';
 
-const defaultInjectCode: InjectCode = (cssCode, { styleId, useStrictCSP, attributes }) => {
+const defaultInjectCode: InjectCode = (cssCode, { useStrictCSP, attributes }) => {
     let attributesInjection = '';
 
     for (const attribute in attributes) {
-        attributesInjection += `elementStyle.setAttribute('${attribute}', '${attributes[attribute]}');`;
+        const attributeValue =
+            typeof attributes[attribute] === 'function' ? attributes[attribute]() : attributes[attribute];
+        attributesInjection += `elementStyle.setAttribute('${attribute}', '${attributeValue}');`;
     }
 
     return `try{if(typeof document != 'undefined'){var elementStyle = document.createElement('style');${
-        typeof styleId == 'string' && styleId.length > 0 ? `elementStyle.id = '${styleId}';` : ''
-    }${
         useStrictCSP ? `elementStyle.nonce = document.head.querySelector('meta[property=csp-nonce]')?.content;` : ''
     }${attributesInjection}elementStyle.appendChild(document.createTextNode(${cssCode}));document.head.appendChild(elementStyle);}}catch(e){console.error('vite-plugin-css-injected-by-js', e);}`;
 };
@@ -34,12 +32,10 @@ export async function buildCSSInjectionCode({
     injectCode,
     injectCodeFunction,
     injectionCodeFormat = 'iife',
-    styleId,
     useStrictCSP,
+    attributes,
 }: BuildCSSInjectionConfiguration): Promise<OutputChunk | null> {
     let { minify, target } = buildOptions;
-
-    const generatedStyleId = typeof styleId === 'function' ? styleId() : styleId;
 
     const res = await build({
         root: '',
@@ -48,10 +44,10 @@ export async function buildCSSInjectionCode({
         plugins: [
             injectionCSSCodePlugin({
                 cssToInject,
-                styleId: generatedStyleId,
                 injectCode,
                 injectCodeFunction,
                 useStrictCSP,
+                attributes,
             }),
         ],
         build: {
@@ -64,7 +60,7 @@ export async function buildCSSInjectionCode({
                     ['all-css']: cssInjectedByJsId,
                 },
                 output: {
-                    format: injectionCodeFormat
+                    format: injectionCodeFormat,
                 },
             },
         },
@@ -79,9 +75,9 @@ export function resolveInjectionCode(
     cssCode: string,
     injectCode: ((cssCode: string, options: InjectCodeOptions) => string) | undefined,
     injectCodeFunction: ((cssCode: string, options: InjectCodeOptions) => void) | undefined,
-    { styleId, useStrictCSP, attributes }: InjectCodeOptions
+    { useStrictCSP, attributes }: InjectCodeOptions
 ) {
-    const injectionOptions = { styleId, useStrictCSP, attributes };
+    const injectionOptions = { useStrictCSP, attributes };
     if (injectCodeFunction) {
         return `(${injectCodeFunction})(${cssCode}, ${JSON.stringify(injectionOptions)})`;
     }
@@ -93,8 +89,8 @@ function injectionCSSCodePlugin({
     cssToInject,
     injectCode,
     injectCodeFunction,
-    styleId,
     useStrictCSP,
+    attributes,
 }: CSSInjectionConfiguration): Plugin {
     return {
         name: 'vite:injection-css-code-plugin',
@@ -106,7 +102,7 @@ function injectionCSSCodePlugin({
         load(id: string) {
             if (id == cssInjectedByJsId) {
                 const cssCode = JSON.stringify(cssToInject.trim());
-                return resolveInjectionCode(cssCode, injectCode, injectCodeFunction, { styleId, useStrictCSP });
+                return resolveInjectionCode(cssCode, injectCode, injectCodeFunction, { useStrictCSP, attributes });
             }
         },
     };
@@ -248,7 +244,14 @@ export async function relativeCssInjection(
 
         // We have already filtered these chunks to be RenderedChunks
         const jsAsset = bundle[jsAssetName] as OutputChunk;
-        injectAndFixMap(jsAsset, cssInjectionCode ?? '', buildOptions, topExecutionPriorityFlag, bundle, isVirtualModuleUsed);
+        injectAndFixMap(
+            jsAsset,
+            cssInjectionCode ?? '',
+            buildOptions,
+            topExecutionPriorityFlag,
+            bundle,
+            isVirtualModuleUsed
+        );
     }
 }
 
@@ -309,7 +312,7 @@ export async function globalCssInjection(
 
         process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
             debugLog(`[vite-plugin-css-injected-by-js] Global CSS inject: ${jsAsset.fileName}`);
-        
+
         injectAndFixMap(jsAsset, cssInjectionCode, buildOptions, topExecutionPriorityFlag, bundle, isVirtualModuleUsed);
         /*jsAsset.code = buildOutputChunkWithCssInjectionCode(
             jsAsset.code,
@@ -354,86 +357,88 @@ export function isCSSRequest(request: string): boolean {
 }
 
 export function injectAndFixMap(
-  chunk: OutputChunk,
-  cssInjectionCode: string,
-  buildOptions: BuildCSSInjectionConfiguration['buildOptions'] | undefined,
-  topExecutionPriority: boolean,
-  bundle: OutputBundle,
-  isVirtualModuleUsed: boolean = false
+    chunk: OutputChunk,
+    cssInjectionCode: string,
+    buildOptions: BuildCSSInjectionConfiguration['buildOptions'] | undefined,
+    topExecutionPriority: boolean,
+    bundle: OutputBundle,
+    isVirtualModuleUsed: boolean = false
 ) {
-  // Always clean up empty CSS placeholder comments.
-  chunk.code = chunk.code.replace(/\/\*\s*empty css\s*\*\//g, '');
+    // Always clean up empty CSS placeholder comments.
+    chunk.code = chunk.code.replace(/\/\*\s*empty css\s*\*\//g, '');
 
-  if (!cssInjectionCode) return;
+    if (!cssInjectionCode) return;
 
-  let mapObj: { mappings: string; [k: string]: unknown } | null = null;
-  const mapAssetName = chunk.fileName + '.map';
-  const mapAsset = bundle[mapAssetName] as OutputAsset | undefined;
+    let mapObj: { mappings: string; [k: string]: unknown } | null = null;
+    const mapAssetName = chunk.fileName + '.map';
+    const mapAsset = bundle[mapAssetName] as OutputAsset | undefined;
 
-  if (buildOptions?.sourcemap && mapAsset?.type === 'asset') {
-    try {
-      const raw =
-        mapAsset.source instanceof Uint8Array
-          ? new TextDecoder().decode(mapAsset.source)
-          : String(mapAsset.source);
-      mapObj = JSON.parse(raw);
-    } catch (_) {
-      /* swallow */
+    if (buildOptions?.sourcemap && mapAsset?.type === 'asset') {
+        try {
+            const raw =
+                mapAsset.source instanceof Uint8Array
+                    ? new TextDecoder().decode(mapAsset.source)
+                    : String(mapAsset.source);
+            mapObj = JSON.parse(raw);
+        } catch (_) {
+            /* swallow */
+        }
     }
-  }
 
-  /**
-   * Apply the "Semicolon Shift" (Issue #155 fix):
-   * Prepend one `;` to the VLQ `mappings` string to push every existing
-   * mapping down by exactly one row – matching the single line we
-   * prepended to the chunk code.
-   */
-  const shiftMap = () => {
-    if (mapObj && mapAsset) {
-      mapObj.mappings = ';' + mapObj.mappings;
-      (mapAsset as OutputAsset).source = JSON.stringify(mapObj);
-    }
-    if (chunk.map && typeof chunk.map.mappings === 'string') {
-      chunk.map.mappings = ';' + chunk.map.mappings;
-    }
-  };
+    /**
+     * Apply the "Semicolon Shift" (Issue #155 fix):
+     * Prepend one `;` to the VLQ `mappings` string to push every existing
+     * mapping down by exactly one row – matching the single line we
+     * prepended to the chunk code.
+     */
+    const shiftMap = () => {
+        if (mapObj && mapAsset) {
+            mapObj.mappings = ';' + mapObj.mappings;
+            (mapAsset as OutputAsset).source = JSON.stringify(mapObj);
+        }
+        if (chunk.map && typeof chunk.map.mappings === 'string') {
+            chunk.map.mappings = ';' + chunk.map.mappings;
+        }
+    };
 
-  if (isVirtualModuleUsed) {
-    // Shadow `document.head` inside an IIFE so the user's custom target
-    // (e.g. a ShadowRoot passed via injectCSS({ target })) flows into
-    // the original injection template without any code-gen changes.
-    const patched = cssInjectionCode.replace(/document\.head/g, 'document_head');
+    if (isVirtualModuleUsed) {
+        // Shadow `document.head` inside an IIFE so the user's custom target
+        // (e.g. a ShadowRoot passed via injectCSS({ target })) flows into
+        // the original injection template without any code-gen changes.
+        const patched = cssInjectionCode.replace(/document\.head/g, 'document_head');
 
-    const payload =
-      '(function(){' +
-        'var _ei=function(_o){' +
-          'var _t=(_o&&_o.target)||(typeof document!=="undefined"?document.head:void 0);' +
-          'if(!_t)return;' +
-          '(function(document_head){' + patched + '})(_t)' +
-        '};' +
-        'if(typeof globalThis!=="undefined"){' +
-          'if(globalThis.__VITE_CSS_UNLOCKED__){' +
+        const payload =
+            '(function(){' +
+            'var _ei=function(_o){' +
+            'var _t=(_o&&_o.target)||(typeof document!=="undefined"?document.head:void 0);' +
+            'if(!_t)return;' +
+            '(function(document_head){' +
+            patched +
+            '})(_t)' +
+            '};' +
+            'if(typeof globalThis!=="undefined"){' +
+            'if(globalThis.__VITE_CSS_UNLOCKED__){' +
             '_ei(globalThis.__VITE_CSS_INJECT_OPTS__||{});' +
-          '}else{' +
+            '}else{' +
             '(globalThis.__VITE_CSS_QUEUE__=globalThis.__VITE_CSS_QUEUE__||[]).push(_ei);' +
-          '}' +
-        '}' +
-      '})();';
+            '}' +
+            '}' +
+            '})();';
 
-    // Flatten any stray newlines from the injection code into one line.
-    const singleLine = payload.replace(/\n/g, '');
+        // Flatten any stray newlines from the injection code into one line.
+        const singleLine = payload.replace(/\n/g, '');
 
-    chunk.code = singleLine + '\n' + chunk.code;
-    shiftMap();
-  } else {
-    const singleLine = cssInjectionCode.replace(/\n/g, '');
-
-    if (topExecutionPriority) {
-      chunk.code = singleLine + '\n' + chunk.code;
-      shiftMap();
+        chunk.code = singleLine + '\n' + chunk.code;
+        shiftMap();
     } else {
-      chunk.code += '\n' + singleLine;
-      // No map shift needed when appending to the bottom.
+        const singleLine = cssInjectionCode.replace(/\n/g, '');
+
+        if (topExecutionPriority) {
+            chunk.code = singleLine + '\n' + chunk.code;
+            shiftMap();
+        } else {
+            chunk.code += '\n' + singleLine;
+            // No map shift needed when appending to the bottom.
+        }
     }
-  }
 }

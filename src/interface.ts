@@ -14,9 +14,9 @@ export interface BaseOptions {
     injectCode?: InjectCode;
     injectCodeFunction?: InjectCodeFunction;
     injectionCodeFormat?: ModuleFormat;
-    styleId?: string | (() => string);
     topExecutionPriority?: boolean;
     useStrictCSP?: boolean;
+    attributes?: { [key: string]: string | (() => string) } | undefined;
 }
 
 export interface PluginConfiguration extends BaseOptions {

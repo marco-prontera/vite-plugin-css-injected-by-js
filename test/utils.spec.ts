@@ -49,7 +49,9 @@ describe('utils', () => {
             const styleId = `style-${Date.now()}`;
             const output = await buildCSSInjectionCode({
                 cssToInject: 'body { color: red; }',
-                styleId,
+                attributes: {
+                    id: styleId,
+                },
                 buildOptions: { minify: true, target: 'es2015' },
             });
 
@@ -71,7 +73,9 @@ describe('utils', () => {
             const styleId = `style-${Date.now()}`;
             const output = await buildCSSInjectionCode({
                 cssToInject: 'body { color: red; }',
-                styleId,
+                attributes: {
+                    id: styleId,
+                },
                 buildOptions: { minify: true, target: 'es2015' },
             });
 
@@ -94,12 +98,16 @@ describe('utils', () => {
             const builds = await Promise.all([
                 buildCSSInjectionCode({
                     cssToInject: 'body { color: red; }',
-                    styleId,
+                    attributes: {
+                        id: styleId,
+                    },
                     buildOptions: { minify: true, target: 'es2015' },
                 }),
                 buildCSSInjectionCode({
                     cssToInject: 'body { background: blue; }',
-                    styleId,
+                    attributes: {
+                        id: styleId,
+                    },
                     buildOptions: { minify: true, target: 'es2015' },
                 }),
             ]);
@@ -149,7 +157,9 @@ describe('utils', () => {
             const styleId = `style-${Date.now()}`;
             const output = await buildCSSInjectionCode({
                 cssToInject: 'body { color: red; }',
-                styleId,
+                attributes: {
+                    id: styleId,
+                },
                 useStrictCSP: true,
                 buildOptions: { minify: true, target: 'es2015' },
             });
@@ -176,7 +186,9 @@ describe('utils', () => {
             const styleId = `style-custom-${Date.now()}`;
             const output = await buildCSSInjectionCode({
                 cssToInject: 'body { color: red; }',
-                styleId,
+                attributes: {
+                    id: styleId,
+                },
                 injectCodeFunction: (css) => {
                     const $style = document.createElement('style');
                     $style.setAttribute('custom-style', '');
@@ -204,9 +216,11 @@ describe('utils', () => {
             const styleId = `style-custom-${Date.now()}`;
             const output = await buildCSSInjectionCode({
                 cssToInject: 'body { color: red; }',
-                styleId,
+                attributes: {
+                    id: styleId,
+                },
                 useStrictCSP: true,
-                injectCodeFunction: (css, { styleId }) => {
+                injectCodeFunction: (css, { attributes }) => {
                     const $style = document.createElement('style');
                     $style.setAttribute('custom-style-strict', '');
 
