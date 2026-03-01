@@ -1,4 +1,5 @@
-import inlineCss from './dynamic-inline.css?inline';
+import './dynamic-inline.css';
+import { injectCSS, removeCSS } from 'virtual:css-injected-by-js';
 
 export function mountDynamic() {
   const el = document.createElement('div');
@@ -6,8 +7,13 @@ export function mountDynamic() {
   el.textContent = 'Dynamic inline module loaded';
   document.body.appendChild(el);
 
-  // Manually inject the ?inline CSS into a <style> tag
-  const style = document.createElement('style');
-  style.textContent = inlineCss;
-  document.head.appendChild(style);
+ const btn = document.createElement('button');
+    btn.textContent = 'Click me to inject CSS from dynamic module';
+    btn.addEventListener('click', injectCSS);
+    el.appendChild(btn);
+
+    const removeCssBtn = document.createElement('button');
+    removeCssBtn.textContent = 'Click me to remove injected CSS from dynamic module';
+    removeCssBtn.addEventListener('click', removeCSS);
+    el.appendChild(removeCssBtn);
 }
