@@ -366,7 +366,6 @@ export function injectAndFixMap(
 
   if (!cssInjectionCode) return;
 
-  // ── Source Map Resolution ──────────────────────────────────────────
   let mapObj: { mappings: string; [k: string]: unknown } | null = null;
   const mapAssetName = chunk.fileName + '.map';
   const mapAsset = bundle[mapAssetName] as OutputAsset | undefined;
@@ -400,7 +399,6 @@ export function injectAndFixMap(
   };
 
   if (isVirtualModuleUsed) {
-    // ── VIRTUAL MODULE MODE: Queue & Unlock ────────────────────────
     // Shadow `document.head` inside an IIFE so the user's custom target
     // (e.g. a ShadowRoot passed via injectCSS({ target })) flows into
     // the original injection template without any code-gen changes.
@@ -428,7 +426,6 @@ export function injectAndFixMap(
     chunk.code = singleLine + '\n' + chunk.code;
     shiftMap();
   } else {
-    // ── STANDARD MODE ──────────────────────────────────────────────
     const singleLine = cssInjectionCode.replace(/\n/g, '');
 
     if (topExecutionPriority) {

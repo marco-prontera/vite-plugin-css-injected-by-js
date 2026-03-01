@@ -13,14 +13,9 @@ import type { OutputAsset } from 'rollup';
 import type { Plugin, ResolvedConfig } from 'vite';
 import type { DevOptions, PluginConfiguration } from './interface';
 
-
 const VIRTUAL_MODULE_ID = 'virtual:css-injected-by-js';
 const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID;
 
-// ── Virtual Module: Build Mode ─────────────────────────────────────────────
-// Queue & Unlock pattern.  Chunks push their injection functions to a global
-// queue.  When the consumer calls `injectCSS(opts)` the queue is flushed
-// and the system is unlocked so future lazy-loaded chunks inject immediately.
 const VIRTUAL_MODULE_BUILD_CODE = `
 export function injectCSS(opts) {
   if (typeof globalThis === 'undefined') return;
@@ -34,11 +29,6 @@ export function injectCSS(opts) {
 }
 `;
 
-// ── Virtual Module: Dev Mode ───────────────────────────────────────────────
-// Mute every Vite-managed <style data-vite-dev-id> tag at import time via a
-// MutationObserver.  When the consumer calls `injectCSS(opts)` the observer
-// is disconnected, cached nodes are unmuted, and (optionally) moved into the
-// user-provided target (e.g. a ShadowRoot).
 const VIRTUAL_MODULE_DEV_CODE = `
 var _cssEnabled = false;
 var _styleCache = new Set();
@@ -107,9 +97,6 @@ export default function cssInjectedByJsPlugin({
     let isVirtualModuleUsed = false;
 
     const plugins: Plugin[] = [
-        // ── Plugin 1: Virtual Module ───────────────────────────────────
-        // Runs at normal priority.  Tracks whether the consumer imported
-        // the virtual module and returns the appropriate build/dev shim.
         {
             name: 'vite-plugin-css-injected-by-js-virtual',
             configResolved(resolvedConfig) {
@@ -127,9 +114,6 @@ export default function cssInjectedByJsPlugin({
                 }
             },
         },
-        // ── Plugin 2: Bundle Manipulation (enforce: 'post') ────────────
-        // Contains all the original CSS-into-JS injection logic.
-        // Receives `isVirtualModuleUsed` from the shared closure.
         {
             apply: 'build',
             enforce: 'post',
