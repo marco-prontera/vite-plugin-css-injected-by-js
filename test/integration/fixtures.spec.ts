@@ -73,7 +73,7 @@ async function buildFixture({
                     input: normalizedInput,
                 },
             },
-        });
+        }) as unknown as RolldownOutput | RolldownOutput[];
 
         const output = normalizeOutput(result).output;
         return output;
