@@ -9,15 +9,15 @@ import {
     resolveInjectionCode,
     warnLog,
 } from './utils.js';
-import type { OutputAsset } from 'rollup';
+import type { OutputAsset } from 'rolldown';
 import type { Plugin, ResolvedConfig } from 'vite';
-import type { DevOptions, PluginConfiguration } from './interface';
 import { injectCSS as buildInject, removeCSS as buildRemove, getRawCSS as buildRaw } from './runtime/build.js';
 import { injectCSS as devInject, removeCSS as devRemove, getRawCSS as devRaw } from './runtime/dev.js';
 
 const VIRTUAL_MODULE_ID = 'virtual:css-injected-by-js';
 const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID;
 
+import type { DevOptions, PluginConfiguration } from './interface.js';
 
 /**
  * Inject the CSS compiled with JS.
@@ -175,8 +175,11 @@ export default function cssInjectedByJsPlugin({
                         config.build,
                         isVirtualModuleUsed
                     );
+                    const chunksWithCss = buildJsCssMap(bundle, jsAssetsFilterFunction);
+                    await relativeCssInjection(bundle, chunksWithCss, buildCssCode, topExecutionPriorityFlag);
 
-                    unusedCssAssets = cssAssets.filter((cssAsset) => !!bundle[cssAsset]);
+                    const consumedCssAssets = Object.values(chunksWithCss).flat();
+                    unusedCssAssets = cssAssets.filter((cssAsset) => !consumedCssAssets.includes(cssAsset));
                     if (!suppressUnusedCssWarning) {
                         // With all used CSS assets now being removed from the bundle, navigate any that have not been linked and output
                         const unusedCssAssetsString = unusedCssAssets.join(',');

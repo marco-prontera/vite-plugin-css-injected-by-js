@@ -1,6 +1,6 @@
 import { build, Plugin } from 'vite';
-import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
-import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginConfiguration } from './interface';
+import type { OutputAsset, OutputBundle, OutputChunk } from 'rolldown';
+import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginConfiguration } from './interface.js';
 
 interface InjectCodeOptions {
     useStrictCSP?: boolean;
@@ -60,6 +60,7 @@ export async function buildCSSInjectionCode({
                     ['all-css']: cssInjectedByJsId,
                 },
                 output: {
+                    format: injectionCodeFormat
                     format: injectionCodeFormat,
                 },
             },
@@ -75,6 +76,9 @@ export function resolveInjectionCode(
     cssCode: string,
     injectCode: ((cssCode: string, options: InjectCodeOptions) => string) | undefined,
     injectCodeFunction: ((cssCode: string, options: InjectCodeOptions) => void) | undefined,
+    { styleId, useStrictCSP, attributes }: InjectCodeOptions
+): string {
+    const injectionOptions = { styleId, useStrictCSP, attributes };
     { useStrictCSP, attributes }: InjectCodeOptions
 ) {
     const injectionOptions = { useStrictCSP, attributes };
@@ -114,12 +118,12 @@ export function removeLinkStyleSheets(html: string, cssFileName: string): string
 }
 
 /* istanbul ignore next -- @preserve */
-export function warnLog(msg: string) {
+export function warnLog(msg: string): void {
     console.warn(`\x1b[33m \n${msg} \x1b[39m`);
 }
 
 /* istanbul ignore next -- @preserve */
-export function debugLog(msg: string) {
+export function debugLog(msg: string): void {
     console.debug(`\x1b[34m \n${msg} \x1b[39m`);
 }
 
@@ -264,6 +268,8 @@ export async function globalCssInjection(
     cssAssets: string[],
     buildCssCode: (css: string) => Promise<OutputChunk | null>,
     jsAssetsFilterFunction: PluginConfiguration['jsAssetsFilterFunction'],
+    topExecutionPriorityFlag: boolean
+): Promise<void> {
     topExecutionPriorityFlag: boolean,
     buildOptions?: BuildCSSInjectionConfiguration['buildOptions'],
     isVirtualModuleUsed: boolean = false

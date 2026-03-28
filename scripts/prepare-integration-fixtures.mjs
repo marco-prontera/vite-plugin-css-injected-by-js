@@ -6,7 +6,7 @@ import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const templatesRoot = path.join(repoRoot, 'playground');
+const templatesRoot = path.join(repoRoot, 'test', 'fixtures-templates');
 const cacheRoot = path.join(repoRoot, 'test', 'fixtures-cache');
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
