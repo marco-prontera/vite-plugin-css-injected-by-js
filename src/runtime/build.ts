@@ -10,7 +10,7 @@ declare global {
     var __VITE_CSS_REMOVED__: boolean | undefined;
 }
 
-export function injectCSS(opts: InjectCSSOptions) {
+export function injectCSS(opts: InjectCSSOptions): void {
   if (typeof globalThis === 'undefined') return;
   globalThis.__VITE_CSS_INJECT_OPTS__ = opts || {};
   
@@ -32,7 +32,7 @@ export function injectCSS(opts: InjectCSSOptions) {
   globalThis.__VITE_CSS_EXECUTED__ = exec;
 }
 
-export function removeCSS(opts: InjectCSSOptions) {
+export function removeCSS(opts: InjectCSSOptions): void {
   if (typeof globalThis === 'undefined') return;
   var els = globalThis.__VITE_CSS_ELS__ || [];
   var target = opts && opts.target;
@@ -53,7 +53,7 @@ export function removeCSS(opts: InjectCSSOptions) {
   }
 }
 
-export function getRawCSS() {
+export function getRawCSS(): string {
   if (typeof globalThis === 'undefined') return '';
   return globalThis.__VITE_CSS_RAW__ || '';
 }

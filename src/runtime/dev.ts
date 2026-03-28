@@ -31,7 +31,7 @@ if (typeof document !== 'undefined') {
   _observe();
 }
 
-export function injectCSS(opts: InjectCSSOptions = {}) {
+export function injectCSS(opts: InjectCSSOptions = {}): void {
   _cssEnabled = true;
   if (_observer) _observer.disconnect();
   if (typeof document === 'undefined') return;
@@ -44,7 +44,7 @@ export function injectCSS(opts: InjectCSSOptions = {}) {
   });
 }
 
-export function removeCSS(opts: InjectCSSOptions = {}) {
+export function removeCSS(opts: InjectCSSOptions = {}): void {
   _cssEnabled = false;
   var target = opts && opts.target;
   

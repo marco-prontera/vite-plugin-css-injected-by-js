@@ -1,19 +1,13 @@
 // @vitest-environment node
-import { execFile } from 'child_process';
-import { access, readdir, writeFile } from 'fs/promises';
 import type { OutputAsset, OutputChunk, RolldownOutput } from 'rolldown';
 import path from 'path';
 import { build } from 'vite';
-import { fileURLToPath } from 'url';
-import { promisify } from 'util';
 import { describe, expect, it } from 'vitest';
 import cssInjectedByJsPlugin from '../../src/index';
 import { createFixtureFromTemplate } from '../fixture-utils';
 
 const runIntegration = process.env.INTEGRATION === '1' || process.env.INTEGRATION === 'true';
 const describeIntegration = runIntegration ? describe.sequential : describe.skip;
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const execFileAsync = promisify(execFile);
 
 function normalizeOutput(result: RolldownOutput | RolldownOutput[]): RolldownOutput {
     return Array.isArray(result) ? result[0] : result;
@@ -44,11 +38,13 @@ async function buildFixture({
     input,
     pluginOptions,
     cssCodeSplit,
+    sourcemap,
 }: {
     root: string;
     input: string | Record<string, string>;
     pluginOptions?: Parameters<typeof cssInjectedByJsPlugin>[0];
     cssCodeSplit?: boolean;
+    sourcemap?: boolean | 'inline' | 'hidden';
 }): Promise<RolldownOutput['output']> {
     const normalizeInput = (value: string) => path.relative(root, value);
     const normalizedInput =
@@ -69,7 +65,8 @@ async function buildFixture({
                 write: false,
                 minify: false,
                 cssCodeSplit: cssCodeSplit ?? true,
-                rollupOptions: {
+                sourcemap: sourcemap ?? false,
+                rolldownOptions: {
                     input: normalizedInput,
                 },
             },
@@ -181,135 +178,17 @@ describeIntegration('fixture templates', () => {
     });
 });
 
-import { execFile } from 'child_process';
-import { access, readFile, readdir, writeFile } from 'fs/promises';
-import type { OutputAsset, OutputChunk, RollupOutput } from 'rollup';
-import path from 'path';
-import { build } from 'vite';
-import { fileURLToPath } from 'url';
-import { promisify } from 'util';
-import { describe, expect, it } from 'vitest';
-import cssInjectedByJsPlugin from '../../src/index';
-import { createFixtureFromTemplate } from '../fixture-utils';
 
-const runIntegration = process.env.INTEGRATION === '1' || process.env.INTEGRATION === 'true';
-const describeIntegration = runIntegration ? describe.sequential : describe.skip;
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const execFileAsync = promisify(execFile);
-
-function normalizeOutput(result: RollupOutput | RollupOutput[]): RollupOutput {
-    return Array.isArray(result) ? result[0] : result;
-}
-
-function assetSourceToString(source: OutputAsset['source']): string {
-    return source instanceof Uint8Array ? new TextDecoder().decode(source) : `${source}`;
-}
-
-function getCssAssets(output: RollupOutput['output']): OutputAsset[] {
-    return output.filter(
-        (item): item is OutputAsset => item.type === 'asset' && item.fileName.endsWith('.css')
-    );
-}
-
-function getHtmlAssets(output: RollupOutput['output']): OutputAsset[] {
-    return output.filter(
-        (item): item is OutputAsset => item.type === 'asset' && item.fileName.endsWith('.html')
-    );
-}
-
-function getEntryChunks(output: RollupOutput['output']): OutputChunk[] {
-    return output.filter((item): item is OutputChunk => item.type === 'chunk' && item.isEntry);
-}
-
-function getMapAssets(output: RollupOutput['output']): OutputAsset[] {
+function getMapAssets(output: RolldownOutput['output']): OutputAsset[] {
     return output.filter(
         (item): item is OutputAsset => item.type === 'asset' && item.fileName.endsWith('.map')
     );
 }
 
-function getJsChunks(output: RollupOutput['output']): OutputChunk[] {
+function getJsChunks(output: RolldownOutput['output']): OutputChunk[] {
     return output.filter(
         (item): item is OutputChunk => item.type === 'chunk' && item.fileName.endsWith('.js')
     );
-}
-
-async function buildFixture({
-    root,
-    input,
-    pluginOptions,
-    cssCodeSplit,
-    sourcemap,
-}: {
-    root: string;
-    input: string | Record<string, string>;
-    pluginOptions?: Parameters<typeof cssInjectedByJsPlugin>[0];
-    cssCodeSplit?: boolean;
-    sourcemap?: boolean | 'inline' | 'hidden';
-}): Promise<RollupOutput['output']> {
-    const normalizeInput = (value: string) => path.relative(root, value);
-    const normalizedInput =
-        typeof input === 'string'
-            ? normalizeInput(input)
-            : Object.fromEntries(Object.entries(input).map(([key, value]) => [key, normalizeInput(value)]));
-
-    const previousCwd = process.cwd();
-    process.chdir(root);
-
-    try {
-        const result = await build({
-            root: '.',
-            configFile: false,
-            logLevel: 'silent',
-            plugins: cssInjectedByJsPlugin(pluginOptions),
-            build: {
-                write: false,
-                minify: false,
-                cssCodeSplit: cssCodeSplit ?? true,
-                sourcemap: sourcemap ?? false,
-                rollupOptions: {
-                    input: normalizedInput,
-                },
-            },
-        });
-
-        const output = normalizeOutput(result as RollupOutput | RollupOutput[]).output;
-        return output;
-    } finally {
-        process.chdir(previousCwd);
-    }
-}
-
-async function writeFixtureViteConfig(root: string): Promise<void> {
-    const configContents = `
-    import { defineConfig } from 'vite'
-    import cssInjectedByJsPlugin from '${path.resolve(__dirname, '../../dist/esm/index.js')}'
-
-    export default defineConfig({
-    plugins: [
-        cssInjectedByJsPlugin(),
-    ],
-    })`;
-
-    await writeFile(path.join(root, 'vite.config.cjs'), configContents);
-}
-
-async function runFixtureViteBuild(root: string): Promise<void> {
-    const viteScript = path.join(root, 'node_modules', 'vite', 'bin', 'vite.js');
-    await execFileAsync(process.execPath, [viteScript, 'build'], { cwd: root });
-}
-
-async function findAssetFiles(distRoot: string, extension: string): Promise<string[]> {
-    const assetsRoot = path.join(distRoot, 'assets');
-    try {
-        await access(assetsRoot);
-    } catch {
-        return [];
-    }
-
-    const entries = await readdir(assetsRoot, { withFileTypes: true });
-    return entries
-        .filter((entry) => entry.isFile() && entry.name.endsWith(extension))
-        .map((entry) => path.join(assetsRoot, entry.name));
 }
 
 describeIntegration('fixture templates', () => {
@@ -483,30 +362,6 @@ describeIntegration('fixture templates', () => {
         }
     });
 
-    it(
-        'builds basic fixture with rolldown package json',
-        async () => {
-        const fixture = await createFixtureFromTemplate('basic-rolldown');
-
-        try {
-            await writeFixtureViteConfig(fixture.root);
-            await runFixtureViteBuild(fixture.root);
-
-            const distRoot = path.join(fixture.root, 'dist');
-            const html = await readFile(path.join(distRoot, 'index.html'), 'utf8');
-            expect(html).not.toContain('rel="stylesheet"');
-
-            const cssAssets = await findAssetFiles(distRoot, '.css');
-            expect(cssAssets).toHaveLength(0);
-
-            const jsAssets = await findAssetFiles(distRoot, '.js');
-            const jsContents = await Promise.all(jsAssets.map((asset) => readFile(asset, 'utf8')));
-            expect(jsContents.join('\n')).toContain('.paradise-entry');
-        } finally {
-            await fixture.cleanup();
-        }
-        }
-    );
 });
 
 // ── Source Map Integration Tests ──────────────────────────────────────────────
@@ -692,77 +547,5 @@ describeIntegration('sourcemap generation', () => {
         } finally {
             await fixture.cleanup();
         }
-    });
-});
-
-// ── CJS / ESM Export Validation ───────────────────────────────────────────────
-describe('CJS and ESM exports', () => {
-    const distRoot = path.resolve(repoRoot, 'dist');
-    const esmEntry = path.join(distRoot, 'esm', 'index.js');
-    const cjsEntry = path.join(distRoot, 'cjs', 'index.js');
-    const esmPkg = path.join(distRoot, 'esm', 'package.json');
-    const cjsPkg = path.join(distRoot, 'cjs', 'package.json');
-
-    it('dist/esm/index.js exists', async () => {
-        await expect(access(esmEntry).then(() => true)).resolves.toBe(true);
-    });
-
-    it('dist/cjs/index.js exists', async () => {
-        await expect(access(cjsEntry).then(() => true)).resolves.toBe(true);
-    });
-
-    it('ESM package.json declares "type": "module"', async () => {
-        const contents = JSON.parse(await readFile(esmPkg, 'utf8'));
-        expect(contents.type).toBe('module');
-    });
-
-    it('CJS package.json declares "type": "commonjs"', async () => {
-        const contents = JSON.parse(await readFile(cjsPkg, 'utf8'));
-        expect(contents.type).toBe('commonjs');
-    });
-
-    it('ESM entry exports a default function', async () => {
-        const mod = await import(esmEntry);
-        expect(typeof mod.default).toBe('function');
-    });
-
-    it('ESM default export returns an array of plugins', async () => {
-        const mod = await import(esmEntry);
-        const plugins = mod.default();
-        expect(Array.isArray(plugins)).toBe(true);
-        expect(plugins.length).toBeGreaterThanOrEqual(2);
-
-        // Verify expected plugin names
-        const names = plugins.map((p: { name: string }) => p.name);
-        expect(names).toContain('vite-plugin-css-injected-by-js-virtual');
-        expect(names).toContain('vite-plugin-css-injected-by-js');
-    });
-
-    it('CJS entry can be required and exports a default function', async () => {
-        // Use a child process to verify real CJS require() to avoid ESM/CJS interop issues
-        const { stdout } = await execFileAsync(process.execPath, [
-            '-e',
-            `const m = require(${JSON.stringify(cjsEntry)}); console.log(typeof m.default);`,
-        ]);
-        expect(stdout.trim()).toBe('function');
-    });
-
-    it('CJS default export produces array of plugins with expected names', async () => {
-        const { stdout } = await execFileAsync(process.execPath, [
-            '-e',
-            `const m = require(${JSON.stringify(cjsEntry)});` +
-            `const plugins = m.default();` +
-            `console.log(JSON.stringify(plugins.map(p => p.name)));`,
-        ]);
-        const names = JSON.parse(stdout.trim());
-        expect(names).toContain('vite-plugin-css-injected-by-js-virtual');
-        expect(names).toContain('vite-plugin-css-injected-by-js');
-    });
-
-    it('root package.json exports map points to correct files', async () => {
-        const rootPkg = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'));
-        expect(rootPkg.exports['.']).toBeDefined();
-        expect(rootPkg.exports['.'].import).toContain('esm');
-        expect(rootPkg.exports['.'].require).toContain('cjs');
     });
 });

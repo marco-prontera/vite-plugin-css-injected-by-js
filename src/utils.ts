@@ -3,6 +3,7 @@ import type { OutputAsset, OutputBundle, OutputChunk } from 'rolldown';
 import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginConfiguration } from './interface.js';
 
 interface InjectCodeOptions {
+    styleId?: string;
     useStrictCSP?: boolean;
     attributes?: { [key: string]: string | (() => string) } | undefined;
 }
@@ -61,7 +62,6 @@ export async function buildCSSInjectionCode({
                 },
                 output: {
                     format: injectionCodeFormat
-                    format: injectionCodeFormat,
                 },
             },
         },
@@ -79,9 +79,6 @@ export function resolveInjectionCode(
     { styleId, useStrictCSP, attributes }: InjectCodeOptions
 ): string {
     const injectionOptions = { styleId, useStrictCSP, attributes };
-    { useStrictCSP, attributes }: InjectCodeOptions
-) {
-    const injectionOptions = { useStrictCSP, attributes };
     if (injectCodeFunction) {
         return `(${injectCodeFunction})(${cssCode}, ${JSON.stringify(injectionOptions)})`;
     }
@@ -268,12 +265,10 @@ export async function globalCssInjection(
     cssAssets: string[],
     buildCssCode: (css: string) => Promise<OutputChunk | null>,
     jsAssetsFilterFunction: PluginConfiguration['jsAssetsFilterFunction'],
-    topExecutionPriorityFlag: boolean
-): Promise<void> {
     topExecutionPriorityFlag: boolean,
     buildOptions?: BuildCSSInjectionConfiguration['buildOptions'],
     isVirtualModuleUsed: boolean = false
-) {
+): Promise<void> {
     const jsTargetBundleKeys = getJsTargetBundleKeys(bundle, jsAssetsFilterFunction);
     if (jsTargetBundleKeys.length == 0) {
         throw new Error(
@@ -370,7 +365,7 @@ export function injectAndFixMap(
     topExecutionPriority: boolean,
     bundle: OutputBundle,
     isVirtualModuleUsed: boolean = false
-) {
+): void {
     chunk.code = chunk.code.replace(/\/\*\s*empty css\s*\*\//g, '');
     
     // Check both now, since in SSR cssInjectionCode might be empty but rawCss exists
