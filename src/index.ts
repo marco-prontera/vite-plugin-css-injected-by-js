@@ -90,10 +90,11 @@ export default function cssInjectedByJsPlugin({
 
                 let unusedCssAssets: string[] = [];
                 if (relativeCSSInjection) {
-                    const assetsWithCss = buildJsCssMap(bundle, jsAssetsFilterFunction);
-                    await relativeCssInjection(bundle, assetsWithCss, buildCssCode, topExecutionPriorityFlag);
+                    const chunksWithCss = buildJsCssMap(bundle, jsAssetsFilterFunction);
+                    await relativeCssInjection(bundle, chunksWithCss, buildCssCode, topExecutionPriorityFlag);
 
-                    unusedCssAssets = cssAssets.filter((cssAsset) => !!bundle[cssAsset]);
+                    const consumedCssAssets = Object.values(chunksWithCss).flat();
+                    unusedCssAssets = cssAssets.filter((cssAsset) => !consumedCssAssets.includes(cssAsset));
                     if (!suppressUnusedCssWarning) {
                         // With all used CSS assets now being removed from the bundle, navigate any that have not been linked and output
                         const unusedCssAssetsString = unusedCssAssets.join(',');
