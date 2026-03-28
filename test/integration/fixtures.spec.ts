@@ -1,13 +1,18 @@
-// @vitest-environment node
+import { execFile } from 'child_process';
+import { access, readFile, readdir, writeFile } from 'fs/promises';
 import type { OutputAsset, OutputChunk, RolldownOutput } from 'rolldown';
 import path from 'path';
 import { build } from 'vite';
+import { fileURLToPath } from 'url';
+import { promisify } from 'util';
 import { describe, expect, it } from 'vitest';
 import cssInjectedByJsPlugin from '../../src/index';
 import { createFixtureFromTemplate } from '../fixture-utils';
 
 const runIntegration = process.env.INTEGRATION === '1' || process.env.INTEGRATION === 'true';
 const describeIntegration = runIntegration ? describe.sequential : describe.skip;
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const execFileAsync = promisify(execFile);
 
 function normalizeOutput(result: RolldownOutput | RolldownOutput[]): RolldownOutput {
     return Array.isArray(result) ? result[0] : result;
@@ -31,6 +36,18 @@ function getHtmlAssets(output: RolldownOutput['output']): OutputAsset[] {
 
 function getEntryChunks(output: RolldownOutput['output']): OutputChunk[] {
     return output.filter((item): item is OutputChunk => item.type === 'chunk' && item.isEntry);
+}
+
+function getMapAssets(output: RolldownOutput['output']): OutputAsset[] {
+    return output.filter(
+        (item): item is OutputAsset => item.type === 'asset' && item.fileName.endsWith('.map')
+    );
+}
+
+function getJsChunks(output: RolldownOutput['output']): OutputChunk[] {
+    return output.filter(
+        (item): item is OutputChunk => item.type === 'chunk' && item.fileName.endsWith('.js')
+    );
 }
 
 async function buildFixture({
@@ -66,129 +83,50 @@ async function buildFixture({
                 minify: false,
                 cssCodeSplit: cssCodeSplit ?? true,
                 sourcemap: sourcemap ?? false,
-                rolldownOptions: {
+                rollupOptions: {
                     input: normalizedInput,
                 },
             },
-        }) as unknown as RolldownOutput | RolldownOutput[];
+        });
 
-        const output = normalizeOutput(result).output;
+        const output = normalizeOutput(result as RolldownOutput | RolldownOutput[]).output;
         return output;
     } finally {
         process.chdir(previousCwd);
     }
 }
 
-describeIntegration('fixture templates', () => {
-    it('builds basic fixture and injects css', async () => {
-        const fixture = await createFixtureFromTemplate('basic');
+async function writeFixtureViteConfig(root: string): Promise<void> {
+    const configContents = `
+    import { defineConfig } from 'vite'
+    import cssInjectedByJsPlugin from '${path.resolve(__dirname, '../../dist/index.js')}'
 
-        try {
-            const output = await buildFixture({
-                root: fixture.root,
-                input: path.resolve(fixture.root, 'index.html'),
-            });
+    export default defineConfig({
+    plugins: [
+        cssInjectedByJsPlugin(),
+    ],
+    })`;
 
-            expect(getCssAssets(output)).toHaveLength(0);
-
-            const html = getHtmlAssets(output).map((asset) => assetSourceToString(asset.source)).join('\n');
-            expect(html).not.toContain('rel="stylesheet"');
-
-            const entryChunk = getEntryChunks(output)[0];
-            expect(entryChunk).toBeDefined();
-            expect(entryChunk.code).toContain('basic-entry');
-        } finally {
-            await fixture.cleanup();
-        }
-    });
-
-    it('builds multiple entry fixture with relative injection', async () => {
-        const fixture = await createFixtureFromTemplate('multiple-entry');
-
-        try {
-            const output = await buildFixture({
-                root: fixture.root,
-                input: {
-                    main: path.resolve(fixture.root, 'index.html'),
-                    nested: path.resolve(fixture.root, 'nested/index.html'),
-                },
-                pluginOptions: { relativeCSSInjection: true },
-                cssCodeSplit: true,
-            });
-
-            expect(getCssAssets(output)).toHaveLength(0);
-
-            const html = getHtmlAssets(output).map((asset) => assetSourceToString(asset.source)).join('\n');
-            expect(html).not.toContain('rel="stylesheet"');
-
-            const entryChunks = getEntryChunks(output);
-            expect(entryChunks.length).toBeGreaterThanOrEqual(2);
-
-            const mainChunk = entryChunks.find((chunk) => chunk.code.includes('main-entry'));
-            const nestedChunk = entryChunks.find((chunk) => chunk.code.includes('nested-entry'));
-
-            expect(mainChunk).toBeDefined();
-            expect(nestedChunk).toBeDefined();
-        } finally {
-            await fixture.cleanup();
-        }
-    });
-
-    it('builds dynamic import fixture and injects all css', async () => {
-        const fixture = await createFixtureFromTemplate('dynamic-import');
-
-        try {
-            const output = await buildFixture({
-                root: fixture.root,
-                input: path.resolve(fixture.root, 'index.html'),
-            });
-
-            expect(getCssAssets(output)).toHaveLength(0);
-
-            const entryChunk = getEntryChunks(output)[0];
-            expect(entryChunk).toBeDefined();
-            expect(entryChunk.code).toContain('base-entry');
-            expect(entryChunk.code).toContain('dynamic-entry');
-        } finally {
-            await fixture.cleanup();
-        }
-    });
-
-    it('builds shadow support fixture with inline css', async () => {
-        const fixture = await createFixtureFromTemplate('shadow');
-
-        try {
-            const output = await buildFixture({
-                root: fixture.root,
-                input: path.resolve(fixture.root, 'index.html'),
-            });
-
-            expect(getCssAssets(output)).toHaveLength(0);
-
-            const html = getHtmlAssets(output).map((asset) => assetSourceToString(asset.source)).join('\n');
-            expect(html).not.toContain('rel="stylesheet"');
-
-            const entryChunk = getEntryChunks(output)[0];
-            expect(entryChunk).toBeDefined();
-            expect(entryChunk.code).toContain('shadow-entry');
-            expect(entryChunk.code).toContain('shadow-inline-css');
-        } finally {
-            await fixture.cleanup();
-        }
-    });
-});
-
-
-function getMapAssets(output: RolldownOutput['output']): OutputAsset[] {
-    return output.filter(
-        (item): item is OutputAsset => item.type === 'asset' && item.fileName.endsWith('.map')
-    );
+    await writeFile(path.join(root, 'vite.config.cjs'), configContents);
 }
 
-function getJsChunks(output: RolldownOutput['output']): OutputChunk[] {
-    return output.filter(
-        (item): item is OutputChunk => item.type === 'chunk' && item.fileName.endsWith('.js')
-    );
+async function runFixtureViteBuild(root: string): Promise<void> {
+    const viteScript = path.join(root, 'node_modules', 'vite', 'bin', 'vite.js');
+    await execFileAsync(process.execPath, [viteScript, 'build'], { cwd: root });
+}
+
+async function findAssetFiles(distRoot: string, extension: string): Promise<string[]> {
+    const assetsRoot = path.join(distRoot, 'assets');
+    try {
+        await access(assetsRoot);
+    } catch {
+        return [];
+    }
+
+    const entries = await readdir(assetsRoot, { withFileTypes: true });
+    return entries
+        .filter((entry) => entry.isFile() && entry.name.endsWith(extension))
+        .map((entry) => path.join(assetsRoot, entry.name));
 }
 
 describeIntegration('fixture templates', () => {
@@ -362,6 +300,30 @@ describeIntegration('fixture templates', () => {
         }
     });
 
+    it(
+        'builds basic fixture with rolldown package json',
+        async () => {
+        const fixture = await createFixtureFromTemplate('basic-rolldown');
+
+        try {
+            await writeFixtureViteConfig(fixture.root);
+            await runFixtureViteBuild(fixture.root);
+
+            const distRoot = path.join(fixture.root, 'dist');
+            const html = await readFile(path.join(distRoot, 'index.html'), 'utf8');
+            expect(html).not.toContain('rel="stylesheet"');
+
+            const cssAssets = await findAssetFiles(distRoot, '.css');
+            expect(cssAssets).toHaveLength(0);
+
+            const jsAssets = await findAssetFiles(distRoot, '.js');
+            const jsContents = await Promise.all(jsAssets.map((asset) => readFile(asset, 'utf8')));
+            expect(jsContents.join('\n')).toContain('.paradise-entry');
+        } finally {
+            await fixture.cleanup();
+        }
+        }
+    );
 });
 
 // ── Source Map Integration Tests ──────────────────────────────────────────────
