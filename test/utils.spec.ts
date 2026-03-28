@@ -1,4 +1,4 @@
-import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
+import type { OutputAsset, OutputBundle, OutputChunk } from 'rolldown';
 import { beforeAll, beforeEach, describe, expect, it, test, vi } from 'vitest';
 import type { PluginConfiguration } from '../src/interface';
 import {
@@ -288,7 +288,7 @@ describe('utils', () => {
                     originalFileName: null,
                     source: JSON.stringify({ version: 3, mappings: originalMappings, sources: [], names: [] }),
                     type: 'asset',
-                } as OutputAsset,
+                } as unknown as OutputAsset,
             };
 
             injectAndFixMap(chunk, 'var x=1;', 'var x=1;', { sourcemap: true }, true, bundle, false);
@@ -310,7 +310,7 @@ describe('utils', () => {
                     originalFileName: null,
                     source: JSON.stringify({ version: 3, mappings: originalMappings, sources: [], names: [] }),
                     type: 'asset',
-                } as OutputAsset,
+                } as unknown as OutputAsset,
             };
 
             injectAndFixMap(chunk, 'var x=1;', 'var x=1;', { sourcemap: true }, false, bundle, false);
@@ -332,7 +332,7 @@ describe('utils', () => {
                     originalFileName: null,
                     source: JSON.stringify({ version: 3, mappings: originalMappings, sources: [], names: [] }),
                     type: 'asset',
-                } as OutputAsset,
+                } as unknown as OutputAsset,
             };
 
             injectAndFixMap(chunk, 'var css="body{color:red}";', 'var css="body{color:red}";', { sourcemap: true }, false, bundle, true);
