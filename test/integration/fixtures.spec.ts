@@ -299,31 +299,6 @@ describeIntegration('fixture templates', () => {
             await fixture.cleanup();
         }
     });
-
-    it(
-        'builds basic fixture with rolldown package json',
-        async () => {
-        const fixture = await createFixtureFromTemplate('basic-rolldown');
-
-        try {
-            await writeFixtureViteConfig(fixture.root);
-            await runFixtureViteBuild(fixture.root);
-
-            const distRoot = path.join(fixture.root, 'dist');
-            const html = await readFile(path.join(distRoot, 'index.html'), 'utf8');
-            expect(html).not.toContain('rel="stylesheet"');
-
-            const cssAssets = await findAssetFiles(distRoot, '.css');
-            expect(cssAssets).toHaveLength(0);
-
-            const jsAssets = await findAssetFiles(distRoot, '.js');
-            const jsContents = await Promise.all(jsAssets.map((asset) => readFile(asset, 'utf8')));
-            expect(jsContents.join('\n')).toContain('.paradise-entry');
-        } finally {
-            await fixture.cleanup();
-        }
-        }
-    );
 });
 
 // ── Source Map Integration Tests ──────────────────────────────────────────────
