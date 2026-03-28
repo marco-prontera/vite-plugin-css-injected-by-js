@@ -9,9 +9,9 @@ import {
     resolveInjectionCode,
     warnLog,
 } from './utils.js';
-import type { OutputAsset } from 'rollup';
+import type { OutputAsset } from 'rolldown';
 import type { Plugin, ResolvedConfig } from 'vite';
-import type { DevOptions, PluginConfiguration } from './interface';
+import type { DevOptions, PluginConfiguration } from './interface.js';
 
 /**
  * Inject the CSS compiled with JS.

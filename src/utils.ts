@@ -1,6 +1,6 @@
 import { build, Plugin } from 'vite';
-import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
-import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginConfiguration } from './interface';
+import type { OutputAsset, OutputBundle, OutputChunk } from 'rolldown';
+import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginConfiguration } from './interface.js';
 
 interface InjectCodeOptions {
     styleId?: string | (() => string);
@@ -80,7 +80,7 @@ export function resolveInjectionCode(
     injectCode: ((cssCode: string, options: InjectCodeOptions) => string) | undefined,
     injectCodeFunction: ((cssCode: string, options: InjectCodeOptions) => void) | undefined,
     { styleId, useStrictCSP, attributes }: InjectCodeOptions
-) {
+): string {
     const injectionOptions = { styleId, useStrictCSP, attributes };
     if (injectCodeFunction) {
         return `(${injectCodeFunction})(${cssCode}, ${JSON.stringify(injectionOptions)})`;
@@ -118,12 +118,12 @@ export function removeLinkStyleSheets(html: string, cssFileName: string): string
 }
 
 /* istanbul ignore next -- @preserve */
-export function warnLog(msg: string) {
+export function warnLog(msg: string): void {
     console.warn(`\x1b[33m \n${msg} \x1b[39m`);
 }
 
 /* istanbul ignore next -- @preserve */
-export function debugLog(msg: string) {
+export function debugLog(msg: string): void {
     console.debug(`\x1b[34m \n${msg} \x1b[39m`);
 }
 
@@ -263,7 +263,7 @@ export async function globalCssInjection(
     buildCssCode: (css: string) => Promise<OutputChunk | null>,
     jsAssetsFilterFunction: PluginConfiguration['jsAssetsFilterFunction'],
     topExecutionPriorityFlag: boolean
-) {
+): Promise<void> {
     const jsTargetBundleKeys = getJsTargetBundleKeys(bundle, jsAssetsFilterFunction);
     if (jsTargetBundleKeys.length == 0) {
         throw new Error(

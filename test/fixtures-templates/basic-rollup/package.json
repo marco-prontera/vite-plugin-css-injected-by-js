@@ -1,5 +1,5 @@
 {
-  "name": "basic-rolldown",
+  "name": "basic-rollup",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,6 +10,6 @@
   },
   "devDependencies": {
     "typescript": "~5.9.3",
-    "vite": "npm:rolldown-vite@latest"
+    "vite": "^7.3.1"
   }
 }

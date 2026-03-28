@@ -1,7 +1,7 @@
-import type { InjectCode, InjectCodeFunction } from './utils';
-import type { OutputAsset, OutputChunk } from 'rollup';
+import type { InjectCode, InjectCodeFunction } from './utils.js';
+import type { OutputAsset, OutputChunk } from 'rolldown';
 import type { BuildOptions } from 'vite';
-import type { ModuleFormat } from 'rollup';
+import type { ModuleFormat } from 'rolldown';
 
 export interface DevOptions {
     enableDev?: boolean;

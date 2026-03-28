@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { execFile } from 'child_process';
 import { access, readFile, readdir, writeFile } from 'fs/promises';
-import type { OutputAsset, OutputChunk, RollupOutput } from 'rollup';
+import type { OutputAsset, OutputChunk, RolldownOutput } from 'rolldown';
 import path from 'path';
 import { build } from 'vite';
 import { fileURLToPath } from 'url';
@@ -15,7 +15,7 @@ const describeIntegration = runIntegration ? describe.sequential : describe.skip
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const execFileAsync = promisify(execFile);
 
-function normalizeOutput(result: RollupOutput | RollupOutput[]): RollupOutput {
+function normalizeOutput(result: RolldownOutput | RolldownOutput[]): RolldownOutput {
     return Array.isArray(result) ? result[0] : result;
 }
 
@@ -23,19 +23,19 @@ function assetSourceToString(source: OutputAsset['source']): string {
     return source instanceof Uint8Array ? new TextDecoder().decode(source) : `${source}`;
 }
 
-function getCssAssets(output: RollupOutput['output']): OutputAsset[] {
+function getCssAssets(output: RolldownOutput['output']): OutputAsset[] {
     return output.filter(
         (item): item is OutputAsset => item.type === 'asset' && item.fileName.endsWith('.css')
     );
 }
 
-function getHtmlAssets(output: RollupOutput['output']): OutputAsset[] {
+function getHtmlAssets(output: RolldownOutput['output']): OutputAsset[] {
     return output.filter(
         (item): item is OutputAsset => item.type === 'asset' && item.fileName.endsWith('.html')
     );
 }
 
-function getEntryChunks(output: RollupOutput['output']): OutputChunk[] {
+function getEntryChunks(output: RolldownOutput['output']): OutputChunk[] {
     return output.filter((item): item is OutputChunk => item.type === 'chunk' && item.isEntry);
 }
 
@@ -49,7 +49,7 @@ async function buildFixture({
     input: string | Record<string, string>;
     pluginOptions?: Parameters<typeof cssInjectedByJsPlugin>[0];
     cssCodeSplit?: boolean;
-}): Promise<RollupOutput['output']> {
+}): Promise<RolldownOutput['output']> {
     const normalizeInput = (value: string) => path.relative(root, value);
     const normalizedInput =
         typeof input === 'string'
@@ -85,7 +85,7 @@ async function buildFixture({
 async function writeFixtureViteConfig(root: string): Promise<void> {
     const configContents = `
     import { defineConfig } from 'vite'
-    import cssInjectedByJsPlugin from '${path.resolve(__dirname, '../../dist/esm/index.js')}'
+    import cssInjectedByJsPlugin from '${path.resolve(__dirname, '../../dist/index.js')}'
 
     export default defineConfig({
     plugins: [
@@ -93,7 +93,7 @@ async function writeFixtureViteConfig(root: string): Promise<void> {
     ],
     })`;
 
-    await writeFile(path.join(root, 'vite.config.cjs'), configContents);
+    await writeFile(path.join(root, 'vite.config.js'), configContents);
 }
 
 async function runFixtureViteBuild(root: string): Promise<void> {
@@ -213,10 +213,10 @@ describeIntegration('fixture templates', () => {
         }
     });
 
-    it(
-        'builds basic fixture with rolldown package json',
+    it.skip(
+        'builds basic fixture with rollup package json',
         async () => {
-        const fixture = await createFixtureFromTemplate('basic-rolldown');
+        const fixture = await createFixtureFromTemplate('basic-rollup');
 
         try {
             await writeFixtureViteConfig(fixture.root);

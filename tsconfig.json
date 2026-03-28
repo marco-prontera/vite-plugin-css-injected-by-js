@@ -1,9 +1,29 @@
 {
-  "extends": "./tsconfig-base.json",
+  "compileOnSave": false,
+  "exclude": ["dist", "node_modules"],
+  "include": ["./src"],
   "compilerOptions": {
-    "declarationDir": "dist/esm/declarations",
+    "allowSyntheticDefaultImports": true,
+    "declaration": true,
+    "declarationDir": "dist/declarations",
+    "declarationMap": false,
+    "inlineSourceMap": false,
+    "isolatedDeclarations": true,
+    "lib": ["esnext", "dom"],
+    "listEmittedFiles": false,
     "module": "nodenext",
-    "outDir": "dist/esm",
-    "target": "esnext"
+    "moduleResolution": "nodenext",
+    "noUnusedLocals": true,
+    "noUnusedParameters": false,
+    "outDir": "dist",
+    "pretty": true,
+    "resolveJsonModule": true,
+    "rootDir": "src",
+    "skipLibCheck": true,
+    "sourceMap": false,
+    "strict": true,
+    "target": "esnext",
+    "traceResolution": false,
+    "types": ["node"]
   }
 }
