@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { execFile } from 'child_process';
-import { access, readFile, readdir, writeFile } from 'fs/promises';
+import { access, readdir, writeFile } from 'fs/promises';
 import type { OutputAsset, OutputChunk, RolldownOutput } from 'rolldown';
 import path from 'path';
 import { build } from 'vite';
@@ -80,39 +80,6 @@ async function buildFixture({
     } finally {
         process.chdir(previousCwd);
     }
-}
-
-async function writeFixtureViteConfig(root: string): Promise<void> {
-    const configContents = `
-    import { defineConfig } from 'vite'
-    import cssInjectedByJsPlugin from '${path.resolve(__dirname, '../../dist/index.js')}'
-
-    export default defineConfig({
-    plugins: [
-        cssInjectedByJsPlugin(),
-    ],
-    })`;
-
-    await writeFile(path.join(root, 'vite.config.js'), configContents);
-}
-
-async function runFixtureViteBuild(root: string): Promise<void> {
-    const viteScript = path.join(root, 'node_modules', 'vite', 'bin', 'vite.js');
-    await execFileAsync(process.execPath, [viteScript, 'build'], { cwd: root });
-}
-
-async function findAssetFiles(distRoot: string, extension: string): Promise<string[]> {
-    const assetsRoot = path.join(distRoot, 'assets');
-    try {
-        await access(assetsRoot);
-    } catch {
-        return [];
-    }
-
-    const entries = await readdir(assetsRoot, { withFileTypes: true });
-    return entries
-        .filter((entry) => entry.isFile() && entry.name.endsWith(extension))
-        .map((entry) => path.join(assetsRoot, entry.name));
 }
 
 describeIntegration('fixture templates', () => {
@@ -212,29 +179,4 @@ describeIntegration('fixture templates', () => {
             await fixture.cleanup();
         }
     });
-
-    it.skip(
-        'builds basic fixture with rollup package json',
-        async () => {
-        const fixture = await createFixtureFromTemplate('basic-rollup');
-
-        try {
-            await writeFixtureViteConfig(fixture.root);
-            await runFixtureViteBuild(fixture.root);
-
-            const distRoot = path.join(fixture.root, 'dist');
-            const html = await readFile(path.join(distRoot, 'index.html'), 'utf8');
-            expect(html).not.toContain('rel="stylesheet"');
-
-            const cssAssets = await findAssetFiles(distRoot, '.css');
-            expect(cssAssets).toHaveLength(0);
-
-            const jsAssets = await findAssetFiles(distRoot, '.js');
-            const jsContents = await Promise.all(jsAssets.map((asset) => readFile(asset, 'utf8')));
-            expect(jsContents.join('\n')).toContain('.paradise-entry');
-        } finally {
-            await fixture.cleanup();
-        }
-        }
-    );
 });
