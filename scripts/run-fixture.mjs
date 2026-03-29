@@ -45,7 +45,7 @@ async function listTemplates() {
 }
 
 async function ensurePluginBuild() {
-    const distEntry = path.join(repoRoot, 'dist', 'esm', 'index.js');
+    const distEntry = path.join(repoRoot, 'dist', 'index.js');
     if (!(await exists(distEntry))) {
         console.log('[fixture] Plugin not built — running npm run build …');
         await execFileAsync(npmCmd, ['run', 'build'], { cwd: repoRoot, stdio: 'inherit' });
@@ -105,7 +105,7 @@ if (fixtureHasPkg && !fixtureHasNodeModules) {
 
 await ensurePluginBuild();
 
-const pluginUrl = pathToFileURL(path.join(repoRoot, 'dist', 'esm', 'index.js')).href;
+const pluginUrl = pathToFileURL(path.join(repoRoot, 'dist', 'index.js')).href;
 const { default: cssInjectedByJsPlugin } = await import(pluginUrl);
 
 if (mode === 'dev') {
