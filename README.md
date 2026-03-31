@@ -442,7 +442,7 @@ set `suppressUnusedCssWarning` to `true`.
 
 ### styleId (string | function)
 
-⚠️**The "styleId" option is deprecated and will be removed in 5.0.0, please use the "attributes" option instead with an "id" property.⚠️**
+⚠️**The "styleId" option is deprecated and will be removed in 6.0.0, please use the "attributes" option instead with an "id" property.⚠️**
 
 If you provide a `string` for `styleId` param, the code of injection will set the `id` attribute of the `style` element
 with the value of the parameter provided. This is an example:
