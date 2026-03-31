@@ -1,8 +1,6 @@
 # vite-plugin-css-injected-by-js 🤯
 [![npm version](https://badge.fury.io/js/vite-plugin-css-injected-by-js.svg)](https://www.npmjs.com/package/vite-plugin-css-injected-by-js)
-[![npm version](https://badge.fury.io/js/vite-plugin-css-injected-by-js.svg)](https://www.npmjs.com/package/vite-plugin-css-injected-by-js)
 
-A Vite plugin that bundles your CSS into JavaScript at build time, removing separate CSS files and enabling single-file deployments.
 A Vite plugin that bundles your CSS into JavaScript at build time, removing separate CSS files and enabling single-file deployments.
 
 ## How does it work
@@ -11,20 +9,6 @@ By default, Vite extracts CSS into separate files during the build process. This
 
 ## Installation
 
-```terminal
-npm install vite-plugin-css-injected-by-js --save-dev
-```
-
-or
-
-```terminal
-yarn add vite-plugin-css-injected-by-js -D
-```
-
-or
-
-```terminal
-pnpm add vite-plugin-css-injected-by-js -D
 ```terminal
 npm install vite-plugin-css-injected-by-js --save-dev
 ```
@@ -135,14 +119,14 @@ customElements.define('my-widget', MyWidget)
 In SSR environments (like Next.js, Nuxt, or custom Node servers), DOM methods like `document.head.appendChild` are not available. Calling `injectCSS()` will safely do nothing. 
 Instead, you can extract the raw CSS string to manually inject it into your server-rendered HTML payload.
 
-\`\`\`ts
+```ts
 import { getRawCSS } from 'virtual:css-injected-by-js'
 
 export function render() {
   const appHtml = renderToString(MyApp)
   const cssString = getRawCSS()
 
-  return \`
+  return `
     <!DOCTYPE html>
     <html>
       <head>
@@ -152,9 +136,9 @@ export function render() {
         <div id="app">\${appHtml}</div>
       </body>
     </html>
-  \`
+  `
 }
-\`\`\`
+```
 > **Note:** In Vite Dev Mode (`npm run dev`), `getRawCSS()` will return an empty string because Vite handles CSS natively via HMR. Test your SSR CSS extraction using the production build (`npm run build`).
 
 ### TypeScript support
@@ -244,10 +228,8 @@ Here is an example of how to use the `cssAssetsFilterFunction`:
 
 ```javascript
 import { defineConfig } from 'vite'
-import { defineConfig } from 'vite'
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
-export default defineConfig({
 export default defineConfig({
     plugins: [
         cssInjectedByJsPlugin({
@@ -256,7 +238,6 @@ export default defineConfig({
             }
         }),
     ]
-})
 })
 ```
 
@@ -275,10 +256,8 @@ Here's an example:
 
 ```ts
 import { defineConfig } from 'vite'
-import { defineConfig } from 'vite'
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
-export default defineConfig({
 export default defineConfig({
     plugins: [
         cssInjectedByJsPlugin({
@@ -290,7 +269,6 @@ export default defineConfig({
             }
         }),
     ]
-})
 })
 ```
 
@@ -319,10 +297,8 @@ This is an example:
 
 ```ts
 import { defineConfig } from 'vite'
-import { defineConfig } from 'vite'
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
-export default defineConfig({
 export default defineConfig({
     plugins: [
         cssInjectedByJsPlugin({
@@ -331,7 +307,6 @@ export default defineConfig({
             }
         }),
     ]
-})
 })
 ```
 
@@ -349,10 +324,8 @@ This is an example:
 
 ```ts
 import { defineConfig } from 'vite'
-import { defineConfig } from 'vite'
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
-export default defineConfig({
 export default defineConfig({
     plugins: [
         cssInjectedByJsPlugin({
@@ -376,7 +349,6 @@ export default defineConfig({
         }),
     ]
 })
-})
 ```
 
 ### injectionCodeFormat (ModuleFormat)
@@ -394,10 +366,8 @@ Here is an example of how to use the `jsAssetsFilterFunction`:
 
 ```javascript
 import { defineConfig } from 'vite'
-import { defineConfig } from 'vite'
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
-export default defineConfig({
 export default defineConfig({
     plugins: [
         cssInjectedByJsPlugin({
@@ -407,7 +377,6 @@ export default defineConfig({
         }),
     ]
 })
-})
 ```
 
 In this example, the CSS injection code will only be added to the `index.js` file. If you wish to add the code to
@@ -415,10 +384,8 @@ multiple files, you can specify them in the function:
 
 ```javascript
 import { defineConfig } from 'vite'
-import { defineConfig } from 'vite'
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
-export default defineConfig({
 export default defineConfig({
     plugins: [
         cssInjectedByJsPlugin({
@@ -427,7 +394,6 @@ export default defineConfig({
             }
         }),
     ]
-})
 })
 ```
 
@@ -447,15 +413,12 @@ This is an example:
 
 ```ts
 import { defineConfig } from 'vite'
-import { defineConfig } from 'vite'
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
-export default defineConfig({
 export default defineConfig({
     plugins: [
         cssInjectedByJsPlugin({preRenderCSSCode: (cssCode) => cssCode}), // The return will be used as the CSS that will be injected during execution.
     ]
-})
 })
 ```
 
@@ -486,15 +449,12 @@ with the value of the parameter provided. This is an example:
 
 ```ts
 import { defineConfig } from 'vite'
-import { defineConfig } from 'vite'
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
-export default defineConfig({
 export default defineConfig({
     plugins: [
         cssInjectedByJsPlugin({styleId: "foo"}),
     ]
-})
 })
 ```
 
@@ -512,15 +472,12 @@ if you use `relativeCSSInjection` and want unique styleIds for each file.
 
 ```ts
 import { defineConfig } from 'vite'
-import { defineConfig } from 'vite'
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
-export default defineConfig({
 export default defineConfig({
     plugins: [
         cssInjectedByJsPlugin({styleId: () => `foo-${Math.random() * 100}`}),
     ]
-})
 })
 ```
 
@@ -552,6 +509,7 @@ export default defineConfig({
         }),
     ]
 })
+```
 
 ### topExecutionPriority (boolean)
 
@@ -560,15 +518,12 @@ to: `false`  the code of injection will be added after the bundle code. This is 
 
 ```ts
 import { defineConfig } from 'vite'
-import { defineConfig } from 'vite'
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
-export default defineConfig({
 export default defineConfig({
     plugins: [
         cssInjectedByJsPlugin({topExecutionPriority: false}),
     ]
-})
 })
 ```
 
@@ -582,15 +537,12 @@ This is an example:
 
 ```ts
 import { defineConfig } from 'vite'
-import { defineConfig } from 'vite'
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
-export default defineConfig({
 export default defineConfig({
     plugins: [
         cssInjectedByJsPlugin({useStrictCSP: true}),
     ]
-})
 })
 ```
 
