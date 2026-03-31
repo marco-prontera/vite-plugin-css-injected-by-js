@@ -34,6 +34,7 @@ export default function cssInjectedByJsPlugin({
     preRenderCSSCode,
     relativeCSSInjection,
     attributes,
+    styleId,
     suppressUnusedCssWarning,
     topExecutionPriority,
     useStrictCSP,
@@ -44,6 +45,12 @@ export default function cssInjectedByJsPlugin({
 
     let isBuild = false;
     let isVirtualModuleUsed = false;
+
+    if (styleId) {
+        warnLog(
+            '[vite-plugin-css-injected-by-js] The "styleId" option is deprecated and will be removed in 6.0.0, please use the "attributes" option instead with an "id" property.'
+        );
+    }
 
     const plugins: Plugin[] = [
         {
@@ -142,7 +149,7 @@ export default function cssInjectedByJsPlugin({
                         injectCode,
                         injectCodeFunction,
                         injectionCodeFormat,
-                        attributes,
+                        attributes: styleId ? { id: styleId, ...attributes } : attributes,
                         useStrictCSP,
                     });
 
