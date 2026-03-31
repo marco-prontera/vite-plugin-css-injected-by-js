@@ -25,8 +25,6 @@ export interface PluginConfiguration extends BaseOptions {
     preRenderCSSCode?: (cssCode: string) => string;
     relativeCSSInjection?: boolean;
     suppressUnusedCssWarning?: boolean;
-    // This will be removed in 5.0.0 in favor of `attributes` and is only kept for backward compatibility until then.
-    styleId?: string | (() => string);
 }
 
 export interface CSSInjectionConfiguration extends BaseOptions {

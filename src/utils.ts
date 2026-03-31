@@ -3,7 +3,6 @@ import type { OutputAsset, OutputBundle, OutputChunk } from 'rolldown';
 import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginConfiguration } from './interface.js';
 
 interface InjectCodeOptions {
-    styleId?: string;
     useStrictCSP?: boolean;
     attributes?: { [key: string]: string | (() => string) } | undefined;
 }
@@ -82,9 +81,9 @@ export function resolveInjectionCode(
     cssCode: string,
     injectCode: ((cssCode: string, options: InjectCodeOptions) => string) | undefined,
     injectCodeFunction: ((cssCode: string, options: InjectCodeOptions) => void) | undefined,
-    { styleId, useStrictCSP, attributes }: InjectCodeOptions
+    { useStrictCSP, attributes }: InjectCodeOptions
 ): string {
-    const injectionOptions = { styleId, useStrictCSP, attributes };
+    const injectionOptions = { useStrictCSP, attributes };
     if (injectCodeFunction) {
         return `(${injectCodeFunction})(${cssCode}, ${JSON.stringify(injectionOptions)})`;
     }
