@@ -69,7 +69,13 @@ export async function buildCSSInjectionCode({
     const _cssChunk = Array.isArray(res) ? res[0] : res;
     if (!('output' in _cssChunk)) return null;
 
-    return _cssChunk.output[0];
+    // Rolldown emits //#region and //#endregion line-comments that reference
+    // internal module IDs.  When the injection code is later collapsed to a
+    // single line, these // comments swallow all subsequent code on that line,
+    // producing invalid JS.  Strip them here so the output is safe to flatten.
+    const code = _cssChunk.output[0].code.replace(/^\s*\/\/#(?:region|endregion).*$/gm, '');
+
+    return { ..._cssChunk.output[0], code };
 }
 
 export function resolveInjectionCode(
