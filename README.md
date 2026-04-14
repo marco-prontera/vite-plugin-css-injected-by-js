@@ -196,8 +196,6 @@ In development, Vite handles CSS natively for HMR. The virtual module uses a `Mu
 2. All cached style nodes are unmuted (`media` attribute removed).
 3. If a `target` is provided, the style nodes are moved into that target.
 
-This gives you **100% Dev/Prod parity** — CSS is hidden until you explicitly reveal it.
-
 #### SSR & Web Worker safety
 
 All DOM operations are guarded by `typeof document !== 'undefined'` checks and `globalThis` is used instead of `window`. The `injectCSS()` call is a safe no-op in SSR or Web Worker contexts.
@@ -249,7 +247,7 @@ Why experimental? Because it uses a non-conventional solution.
 Previously, the plugin strictly applied logic solely during the build phase. Now, we have the capability to experiment
 with it in the development environment.
 
-To activate the plugin in the development environment as well, you need to configure a dev object and set the enableDev
+To activate the plugin in the development environment as well, you need to configure a dev object and set the `enableDev`
 parameter to true.
 
 Here's an example:
