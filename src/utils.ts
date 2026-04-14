@@ -1,4 +1,5 @@
 import { build, Plugin } from 'vite';
+import { warnLog, debugLog } from './utils.log.js';
 import type { OutputAsset, OutputBundle, OutputChunk } from 'rolldown';
 import type { BuildCSSInjectionConfiguration, CSSInjectionConfiguration, PluginConfiguration } from './interface.js';
 
@@ -119,15 +120,7 @@ export function removeLinkStyleSheets(html: string, cssFileName: string): string
     return html.replace(removeCSS, '');
 }
 
-/* istanbul ignore next -- @preserve */
-export function warnLog(msg: string): void {
-    console.warn(`\x1b[33m \n${msg} \x1b[39m`);
-}
-
-/* istanbul ignore next -- @preserve */
-export function debugLog(msg: string): void {
-    console.debug(`\x1b[34m \n${msg} \x1b[39m`);
-}
+export { warnLog, debugLog } from './utils.log.js';
 
 function isJsOutputChunk(chunk: OutputAsset | OutputChunk): chunk is OutputChunk {
     return chunk.type == 'chunk' && chunk.fileName.match(/.[cm]?js(?:\?.+)?$/) != null;
