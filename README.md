@@ -5,7 +5,7 @@ A Vite plugin that bundles your CSS into JavaScript at build time, removing sepa
 
 ## How does it work
 
-By default, Vite extracts CSS into separate files during the build process. This plugin instead gathers all generated CSS and embeds it directly into the JavaScript bundle, injecting it at runtime. As a result, no standalone CSS file is produced and the corresponding <link> tag is removed from the generated HTML. You can also control the timing of the injection, specifying whether the styles should be applied before or after your application code executes.
+By default, Vite extracts CSS into separate files during the build process. This plugin instead gathers all generated CSS and embeds it directly into the JavaScript bundle, injecting it at runtime. As a result, no standalone CSS file is produced and the corresponding `<link>` tag is removed from the generated HTML. You can also control the timing of the injection, specifying whether the styles should be applied before or after your application code executes.
 
 ## Installation
 
@@ -38,12 +38,184 @@ export default defineConfig({
 })
 ```
 
-### Configurations
+By default, the CSS is injected automatically when the JavaScript bundle loads. If you need **explicit control** over when the CSS is injected (e.g. for Web Components, Shadow DOM, or SPAs that need to defer rendering), see the [Virtual Module](#virtual-module-on-demand-injection) section below.
+
+---
+
+## Virtual Module: On-Demand Injection
+
+The plugin exposes an optional virtual module `virtual:css-injected-by-js` that gives you **explicit control** over when and where the bundled CSS is injected into the DOM.
+
+### When to use this
+
+| Use case | Recommended approach |
+|---|---|
+| Component-level granular lazy-loading | Vite's native `?inline` query |
+| **Macro-level** injection control (Library authors, Web Components, SPAs) | **Virtual module** `virtual:css-injected-by-js` |
+
+> **`?inline` vs Virtual Module:** For component-level CSS that you want to control per-file, use Vite's built-in `?inline` query (e.g. `import css from './my.css?inline'`). The virtual module is designed for **macro-level** control over the *entire bundled CSS payload* — deferring injection until your app is ready, or targeting a specific DOM node like a `ShadowRoot`.
+
+### Basic example
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default defineConfig({
+  plugins: [
+    cssInjectedByJsPlugin()
+  ]
+})
+```
+
+```ts
+// src/main.ts
+import { injectCSS, removeCSS } from 'virtual:css-injected-by-js'
+
+// Your application setup...
+const app = createApp()
+app.mount('#app')
+
+// Inject all bundled CSS when you're ready
+injectCSS()
+
+// If you need to clean the environment you can also remove the CSS
+removeCSS()
+```
+
+### ⚠️ Advanced Configuration Limitations
+
+When using the `virtual:css-injected-by-js` module, please be aware of the following architectural boundaries:
+
+* **`topExecutionPriority` is ignored:** When using the virtual module, the plugin forces the injection payload to the absolute top of your chunks. This is mathematically required to ensure the CSS Queue is initialized before your application code calls `injectCSS()`.
+* **Custom `injectCode` Boundaries:** The `removeCSS()` function uses a synchronous `MutationObserver` on the target element. It will fail to track and remove your styles if your custom code:
+  1. Injects into an element other than the configured `target`.
+  2. Uses asynchronous logic (`setTimeout`, Promises, `requestAnimationFrame`).
+  3. Uses Constructable Stylesheets (`new CSSStyleSheet()`) instead of actual DOM nodes.
+
+### Shadow DOM example
+
+Pass a `target` option to inject the CSS into a `ShadowRoot` instead of `document.head`:
+
+```ts
+import { injectCSS } from 'virtual:css-injected-by-js'
+
+class MyWidget extends HTMLElement {
+  connectedCallback() {
+    const shadow = this.attachShadow({ mode: 'open' })
+    shadow.innerHTML = `<div class="widget">Hello</div>`
+
+    // Inject the bundled CSS into this Shadow DOM
+    injectCSS({ target: shadow })
+  }
+}
+
+customElements.define('my-widget', MyWidget)
+```
+
+### Server-Side Rendering (SSR) extraction
+
+In SSR environments (like Next.js, Nuxt, or custom Node servers), DOM methods like `document.head.appendChild` are not available. Calling `injectCSS()` will safely do nothing. 
+Instead, you can extract the raw CSS string to manually inject it into your server-rendered HTML payload.
+
+```ts
+import { getRawCSS } from 'virtual:css-injected-by-js'
+
+export function render() {
+  const appHtml = renderToString(MyApp)
+  const cssString = getRawCSS()
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>\${cssString}</style>
+      </head>
+      <body>
+        <div id="app">\${appHtml}</div>
+      </body>
+    </html>
+  `
+}
+```
+> **Note:** In Vite Dev Mode (`npm run dev`), `getRawCSS()` will return an empty string because Vite handles CSS natively via HMR. Test your SSR CSS extraction using the production build (`npm run build`).
+
+### TypeScript support
+
+The plugin ships type declarations for the virtual module. Add it to your `tsconfig.json`:
+
+```jsonc
+{
+  "compilerOptions": {
+    "types": ["vite-plugin-css-injected-by-js/dist/esm/declarations/client"]
+  }
+}
+```
+
+The `InjectCSSOptions` interface:
+
+```ts
+declare module 'virtual:css-injected-by-js' {
+  export interface InjectCSSOptions {
+    /**
+     * The DOM element where the <style> tag will be injected.
+     * @default document.head
+     */
+    target?: HTMLElement | ShadowRoot;
+  }
+
+  export function injectCSS(options?: InjectCSSOptions): void;
+  export function removeCSS(): void;
+  
+  /**
+   * Returns the raw extracted CSS string. 
+   * Highly useful for Server-Side Rendering (SSR) where DOM injection is impossible.
+   */
+  export function getRawCSS(): string;
+}
+```
+
+### How it works under the hood
+
+#### Build mode (Queue & Unlock)
+
+During the build, each chunk's CSS injection code is wrapped in a function and pushed onto a global queue (`globalThis.__VITE_CSS_QUEUE__`). The CSS is **not** injected until you call `injectCSS()`. When called:
+
+1. A global flag (`globalThis.__VITE_CSS_UNLOCKED__`) is set to `true`.
+2. The queue is flushed — all pending CSS is injected.
+3. Any future lazy-loaded chunks that arrive after the unlock inject their CSS immediately.
+
+This ensures correct behavior with `relativeCSSInjection` and code-split chunks that load asynchronously.
+
+#### Dev mode (Mute & Observe)
+
+In development, Vite handles CSS natively for HMR. The virtual module uses a `MutationObserver` to **mute** all `<style data-vite-dev-id>` tags (by setting `media="not all"`) as soon as they appear. When you call `injectCSS()`:
+
+1. The observer is disconnected.
+2. All cached style nodes are unmuted (`media` attribute removed).
+3. If a `target` is provided, the style nodes are moved into that target.
+
+#### SSR & Web Worker safety
+
+All DOM operations are guarded by `typeof document !== 'undefined'` checks and `globalThis` is used instead of `window`. The `injectCSS()` call is a safe no-op in SSR or Web Worker contexts.
+
+---
+
+## Source Maps
+
+The plugin correctly preserves source maps when prepending CSS injection code to your chunks. When `build.sourcemap` is enabled and `topExecutionPriority` is `true` (the default), the injected CSS code is flattened into a single line and prepended to the chunk. The source map `mappings` string is shifted by prepending a single `;` character, which moves all original mappings down by exactly one row. This ensures debugger breakpoints remain accurate.
+
+No additional configuration is needed — source maps work automatically with all injection modes (`topExecutionPriority`, `relativeCSSInjection`, and the virtual module).
+
+---
+
+## Configurations
 
 When you add the plugin, you can provide a configuration object. Below you can find all configuration parameters
 available.
 
-#### cssAssetsFilterFunction (function)
+### cssAssetsFilterFunction (function)
 
 The `cssAssetsFilterFunction` parameter allows you to specify a filter function that will enable you to exclude some
 output css assets.
@@ -67,7 +239,7 @@ export default defineConfig({
 })
 ```
 
-#### dev (object)
+### dev (object)
 
 **EXPERIMENTAL**
 Why experimental? Because it uses a non-conventional solution.
@@ -75,7 +247,7 @@ Why experimental? Because it uses a non-conventional solution.
 Previously, the plugin strictly applied logic solely during the build phase. Now, we have the capability to experiment
 with it in the development environment.
 
-To activate the plugin in the development environment as well, you need to configure a dev object and set the enableDev
+To activate the plugin in the development environment as well, you need to configure a dev object and set the `enableDev`
 parameter to true.
 
 Here's an example:
@@ -110,7 +282,7 @@ either `removeStyleCode` or `removeStyleCodeFunction` within the `dev` object as
 the `attributes` object encompasses the `data-vite-dev-id` as well. Refer to the `injectCodeFunction` example below for
 further details.
 
-#### injectCode (function)
+### injectCode (function)
 
 You can provide also a function for `injectCode` param to customize the injection code used. The `injectCode` callback
 must return a `string` (with valid JS code) and it's called with two arguments:
@@ -136,7 +308,7 @@ export default defineConfig({
 })
 ```
 
-#### injectCodeFunction (function)
+### injectCodeFunction (function)
 
 If you prefer to specify the injectCode as a plain function you can use the `injectCodeFunction` param.
 
@@ -177,11 +349,11 @@ export default defineConfig({
 })
 ```
 
-#### injectionCodeFormat (ModuleFormat)
+### injectionCodeFormat (ModuleFormat)
 
 You can specify the format of the injection code, by default is `iife`.
 
-#### jsAssetsFilterFunction (function)
+### jsAssetsFilterFunction (function)
 
 The `jsAssetsFilterFunction` parameter allows you to specify which JavaScript file(s) the CSS injection code should be
 added to. This is useful when using a Vite configuration that exports multiple entry points in the building process. The
@@ -226,7 +398,7 @@ export default defineConfig({
 This code will add the injection code to both index.js and main.js files.
 **Be aware that if you specified multiple files that the CSS can be doubled.**
 
-#### preRenderCSSCode (function)
+### preRenderCSSCode (function)
 
 You can use the `preRenderCSSCode` parameter to make specific changes to your CSS before it is printed in the output JS
 file. This parameter takes the CSS code extracted from the build process and allows you to return the modified CSS code
@@ -248,7 +420,7 @@ export default defineConfig({
 })
 ```
 
-#### relativeCSSInjection (boolean)
+### relativeCSSInjection (boolean)
 
 _This feature is based on information provided by Vite. Since we can't control how Vite handles this information this
 means that there may be problems that may not be possible to fix them in this plugin._
@@ -266,7 +438,9 @@ user configurations._
 If a CSS chunk is generated that's not imported by any JS chunk, a warning will be shown. To disable this warning
 set `suppressUnusedCssWarning` to `true`.
 
-#### styleId (string | function)
+### styleId (string | function)
+
+⚠️**The "styleId" option is deprecated and will be removed in 6.0.0, please use the "attributes" option instead with an "id" property.⚠️**
 
 If you provide a `string` for `styleId` param, the code of injection will set the `id` attribute of the `style` element
 with the value of the parameter provided. This is an example:
@@ -313,7 +487,29 @@ export default defineConfig({
 </head>
 ```
 
-#### topExecutionPriority (boolean)
+### attributes (object)
+
+The `attributes` parameter allows you to add custom HTML attributes to the injected `<style>` tag. This is the recommended replacement for the deprecated `styleId` option.
+You can pass static strings or functions that return strings.
+
+```ts
+import { defineConfig } from 'vite'
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
+
+export default defineConfig({
+    plugins: [
+        cssInjectedByJsPlugin({
+            attributes: {
+                'id': 'my-custom-style-id',
+                'data-theme': 'dark',
+                'data-timestamp': () => Date.now().toString()
+            }
+        }),
+    ]
+})
+```
+
+### topExecutionPriority (boolean)
 
 The default behavior adds the injection of CSS before your bundle code. If you provide `topExecutionPriority` equal
 to: `false`  the code of injection will be added after the bundle code. This is an example:
@@ -329,7 +525,7 @@ export default defineConfig({
 })
 ```
 
-#### useStrictCSP (boolean)
+### useStrictCSP (boolean)
 
 The `useStrictCSP` configuration option adds a nonce to style tags based
 on `<meta property="csp-nonce" content={{ nonce }} />`. See the following [link](https://cssinjs.org/csp/?v=v10.9.2) for
@@ -354,31 +550,9 @@ will be injected by our default injection code.
 
 ## Contributing
 
-When you make changes to plugin locally, you may want to build the js from the typescript file of the plugin.
+Want to modify the plugin? Check out our [CONTRIBUTING.md](CONTRIBUTING.md) for a complete guide on how to compile the TypeScript source, run the test suite, and test your changes locally.
 
-Here the guidelines:
-
-### Install
-
-```terminal
-npm install
-```
-
-### Testing
-
-```terminal
-npm run test
-```
-
-### Build plugin
-
-```terminal
-npm run build
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
-
-### A note for plugin-legacy users
+## A note for plugin-legacy users
 
 At first the plugin supported generating the CSS injection code also in the legacy files generated by
 the [plugin-legacy](https://github.com/vitejs/vite/tree/main/packages/plugin-legacy). Since the plugin-legacy injects

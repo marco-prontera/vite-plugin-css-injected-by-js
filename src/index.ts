@@ -9,14 +9,20 @@ import {
     resolveInjectionCode,
     warnLog,
 } from './utils.js';
-import type { OutputAsset } from 'rollup';
+import type { OutputAsset } from 'rolldown';
 import type { Plugin, ResolvedConfig } from 'vite';
-import type { DevOptions, PluginConfiguration } from './interface';
+import { injectCSS as buildInject, removeCSS as buildRemove, getRawCSS as buildRaw } from './runtime/build.js';
+import { injectCSS as devInject, removeCSS as devRemove, getRawCSS as devRaw } from './runtime/dev.js';
+
+const VIRTUAL_MODULE_ID = 'virtual:css-injected-by-js';
+const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID;
+
+import type { DevOptions, PluginConfiguration } from './interface.js';
 
 /**
  * Inject the CSS compiled with JS.
  *
- * @return {Plugin}
+ * @return {Plugin[]}
  */
 export default function cssInjectedByJsPlugin({
     cssAssetsFilterFunction,
@@ -27,6 +33,7 @@ export default function cssInjectedByJsPlugin({
     jsAssetsFilterFunction,
     preRenderCSSCode,
     relativeCSSInjection,
+    attributes,
     styleId,
     suppressUnusedCssWarning,
     topExecutionPriority,
@@ -36,7 +43,76 @@ export default function cssInjectedByJsPlugin({
 
     const topExecutionPriorityFlag = typeof topExecutionPriority == 'boolean' ? topExecutionPriority : true;
 
+    let isBuild = false;
+    let isVirtualModuleUsed = false;
+
+    if (styleId) {
+        warnLog(
+            '[vite-plugin-css-injected-by-js] The "styleId" option is deprecated and will be removed in 6.0.0, please use the "attributes" option instead with an "id" property.'
+        );
+    }
+
     const plugins: Plugin[] = [
+        {
+            name: 'vite-plugin-css-injected-by-js-virtual',
+            configResolved(resolvedConfig) {
+                isBuild = resolvedConfig.command === 'build';
+            },
+            resolveId(id) {
+                if (id === VIRTUAL_MODULE_ID) {
+                    return RESOLVED_VIRTUAL_MODULE_ID;
+                }
+            },
+            load(id) {
+                if (id === RESOLVED_VIRTUAL_MODULE_ID) {
+                    isVirtualModuleUsed = true;
+                    
+                    // Convert the actual TypeScript functions back into strings!
+                    // Note: .toString() removes the 'export' keyword, so we add it back.
+                    if (isBuild) {
+                        return `
+                            export ${buildInject.toString()}
+                            export ${buildRemove.toString()}
+                            export ${buildRaw.toString()}
+                        `;
+                    } else {
+                        // For dev, you might need to prepend your cache variables first
+                        return `
+                            var _cssEnabled = false;
+                            var _styleCache = new Set();
+                            var _observer = null;
+                            function _observe() {
+                              if (_observer && typeof document !== 'undefined') {
+                                _observer.observe(document.documentElement, { childList: true, subtree: true });
+                              }
+                            }
+                            if (typeof document !== 'undefined') {
+                              document.querySelectorAll('style[data-vite-dev-id]').forEach(function(n) {
+                                n.setAttribute('media', 'not all');
+                                _styleCache.add(n);
+                              });
+                              _observer = new MutationObserver(function(muts) {
+                                if (_cssEnabled) return;
+                                muts.forEach(function(m) {
+                                  m.addedNodes.forEach(function(n) {
+                                    if (n.nodeType === 1 && n.tagName === 'STYLE' && n.hasAttribute('data-vite-dev-id')) {
+                                      n.setAttribute('media', 'not all');
+                                      _styleCache.add(n);
+                                    }
+                                  });
+                                });
+                              });
+                              _observe();
+                            }
+
+                            export ${devInject.toString()}
+                            export ${devRemove.toString()}
+                            export ${devRaw.toString()}
+                        `;
+                    }
+                }
+            }
+        },
         {
             apply: 'build',
             enforce: 'post',
@@ -61,7 +137,7 @@ export default function cssInjectedByJsPlugin({
                 config = _config;
             },
             async generateBundle(opts, bundle) {
-                if (config.build.ssr) {
+                if (config.build.ssr && !isVirtualModuleUsed) {
                     return;
                 }
 
@@ -73,7 +149,7 @@ export default function cssInjectedByJsPlugin({
                         injectCode,
                         injectCodeFunction,
                         injectionCodeFormat,
-                        styleId,
+                        attributes: styleId ? { id: styleId, ...attributes } : attributes,
                         useStrictCSP,
                     });
 
@@ -91,9 +167,19 @@ export default function cssInjectedByJsPlugin({
                 let unusedCssAssets: string[] = [];
                 if (relativeCSSInjection) {
                     const assetsWithCss = buildJsCssMap(bundle, jsAssetsFilterFunction);
-                    await relativeCssInjection(bundle, assetsWithCss, buildCssCode, topExecutionPriorityFlag);
+                    await relativeCssInjection(
+                        bundle,
+                        assetsWithCss,
+                        buildCssCode,
+                        topExecutionPriorityFlag,
+                        config.build,
+                        isVirtualModuleUsed
+                    );
+                    const chunksWithCss = buildJsCssMap(bundle, jsAssetsFilterFunction);
+                    await relativeCssInjection(bundle, chunksWithCss, buildCssCode, topExecutionPriorityFlag);
 
-                    unusedCssAssets = cssAssets.filter((cssAsset) => !!bundle[cssAsset]);
+                    const consumedCssAssets = Object.values(chunksWithCss).flat();
+                    unusedCssAssets = cssAssets.filter((cssAsset) => !consumedCssAssets.includes(cssAsset));
                     if (!suppressUnusedCssWarning) {
                         // With all used CSS assets now being removed from the bundle, navigate any that have not been linked and output
                         const unusedCssAssetsString = unusedCssAssets.join(',');
@@ -104,19 +190,19 @@ export default function cssInjectedByJsPlugin({
                     }
                 } else {
                     const allCssAssets = Object.keys(bundle).filter(
-                        (i) =>
-                            bundle[i].type == 'asset' &&
-                            bundle[i].fileName.endsWith('.css')
+                        (i) => bundle[i].type == 'asset' && bundle[i].fileName.endsWith('.css')
                     );
 
-                    unusedCssAssets = allCssAssets.filter(cssAsset => !cssAssets.includes(cssAsset));
+                    unusedCssAssets = allCssAssets.filter((cssAsset) => !cssAssets.includes(cssAsset));
 
                     await globalCssInjection(
                         bundle,
                         cssAssets,
                         buildCssCode,
                         jsAssetsFilterFunction,
-                        topExecutionPriorityFlag
+                        topExecutionPriorityFlag,
+                        config.build,
+                        isVirtualModuleUsed
                     );
                 }
 

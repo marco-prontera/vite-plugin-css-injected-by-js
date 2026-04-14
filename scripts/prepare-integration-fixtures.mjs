@@ -6,7 +6,7 @@ import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const templatesRoot = path.join(repoRoot, 'test', 'fixtures-templates');
+const templatesRoot = path.join(repoRoot, 'playground');
 const cacheRoot = path.join(repoRoot, 'test', 'fixtures-cache');
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
@@ -56,7 +56,7 @@ async function prepareTemplate(templateName) {
 
 async function ensurePluginBuild() {
   const distRoot = path.join(repoRoot, 'dist');
-  const distEntry = path.join(distRoot, 'esm', 'index.js');
+  const distEntry = path.join(distRoot, 'index.js');
 
   if (!(await exists(distEntry))) {
     console.info('[integration] Building plugin for fixtures');

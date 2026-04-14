@@ -1,7 +1,7 @@
-import type { InjectCode, InjectCodeFunction } from './utils';
-import type { OutputAsset, OutputChunk } from 'rollup';
+import type { InjectCode, InjectCodeFunction } from './utils.js';
+import type { OutputAsset, OutputChunk } from 'rolldown';
 import type { BuildOptions } from 'vite';
-import type { ModuleFormat } from 'rollup';
+import type { ModuleFormat } from 'rolldown';
 
 export interface DevOptions {
     enableDev?: boolean;
@@ -14,9 +14,9 @@ export interface BaseOptions {
     injectCode?: InjectCode;
     injectCodeFunction?: InjectCodeFunction;
     injectionCodeFormat?: ModuleFormat;
-    styleId?: string | (() => string);
     topExecutionPriority?: boolean;
     useStrictCSP?: boolean;
+    attributes?: { [key: string]: string | (() => string) } | undefined;
 }
 
 export interface PluginConfiguration extends BaseOptions {
@@ -25,6 +25,8 @@ export interface PluginConfiguration extends BaseOptions {
     preRenderCSSCode?: (cssCode: string) => string;
     relativeCSSInjection?: boolean;
     suppressUnusedCssWarning?: boolean;
+    // This will be removed in 6.0.0 in favor of `attributes` and is only kept for backward compatibility until then.
+    styleId?: string | (() => string);
 }
 
 export interface CSSInjectionConfiguration extends BaseOptions {
