@@ -166,17 +166,15 @@ export default function cssInjectedByJsPlugin({
 
                 let unusedCssAssets: string[] = [];
                 if (relativeCSSInjection) {
-                    const assetsWithCss = buildJsCssMap(bundle, jsAssetsFilterFunction);
+                    const chunksWithCss = buildJsCssMap(bundle, jsAssetsFilterFunction);
                     await relativeCssInjection(
                         bundle,
-                        assetsWithCss,
+                        chunksWithCss,
                         buildCssCode,
                         topExecutionPriorityFlag,
                         config.build,
                         isVirtualModuleUsed
                     );
-                    const chunksWithCss = buildJsCssMap(bundle, jsAssetsFilterFunction);
-                    await relativeCssInjection(bundle, chunksWithCss, buildCssCode, topExecutionPriorityFlag);
 
                     const consumedCssAssets = Object.values(chunksWithCss).flat();
                     unusedCssAssets = cssAssets.filter((cssAsset) => !consumedCssAssets.includes(cssAsset));
