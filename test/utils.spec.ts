@@ -153,6 +153,26 @@ describe('utils', () => {
             expect(getComputedStyle(document.body).color).toBe('red');
         });
 
+        test('Generate valid JS for attributes containing JavaScript special characters', async () => {
+            const attributeValue = `value with 'quotes', "double quotes", \\slashes\\ and\nnewlines`;
+            const output = await buildCSSInjectionCode({
+                cssToInject: 'body { color: red; }',
+                attributes: {
+                    'data-special': attributeValue,
+                },
+                buildOptions: { minify: false, target: 'es2015' },
+            });
+
+            const $script = document.createElement('script');
+            $script.textContent = output?.code || 'throw new Error("UNCAUGHT ERROR")';
+            document.head.appendChild($script);
+
+            expect(onerror).not.toBeCalled();
+            expect(document.head.querySelector('style[data-special]')?.getAttribute('data-special')).toBe(
+                attributeValue
+            );
+        });
+
         test('Generate JS that applies styles, with a nonce', async () => {
             const styleId = `style-${Date.now()}`;
             const output = await buildCSSInjectionCode({
@@ -419,6 +439,32 @@ describe('utils', () => {
 
             const tagLinkNotChanged = removeLinkStyleSheets(tagLinkCssFileName1, cssFileNameDifferent);
             expect(tagLinkNotChanged).toEqual(tagLinkCssFileName1);
+        });
+
+        test('Remove only matching stylesheet links regardless of attribute syntax', () => {
+            const html = [
+                `<link href='/assets/foo.css?v=1#theme' media='screen' rel='preload stylesheet'>`,
+                `<link href="/assets/foo.css" rel="preload">`,
+                `<link rel="stylesheet" href="/assets/other-foo.css">`,
+                `<link rel="stylesheet" href="/assets/foo.css.map">`,
+                `<link rel="stylesheet" href="/assets/foo.css">`,
+            ].join('\n');
+
+            expect(removeLinkStyleSheets(html, 'assets/foo.css').trim()).toBe(
+                [
+                    `<link href="/assets/foo.css" rel="preload">`,
+                    `<link rel="stylesheet" href="/assets/other-foo.css">`,
+                    `<link rel="stylesheet" href="/assets/foo.css.map">`,
+                ].join('\n')
+            );
+        });
+
+        test('Treat CSS file names as strings instead of regular expressions', () => {
+            const html = `<link rel="stylesheet" href="assets/foo[1].css"><link rel="stylesheet" href="assets/foo1.css">`;
+
+            expect(removeLinkStyleSheets(html, 'assets/foo[1].css')).toBe(
+                `<link rel="stylesheet" href="assets/foo1.css">`
+            );
         });
     });
 
