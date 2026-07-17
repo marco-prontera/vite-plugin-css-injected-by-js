@@ -179,6 +179,8 @@ describeIntegration('fixture templates', () => {
 
             expect(mainChunk).toBeDefined();
             expect(nestedChunk).toBeDefined();
+            expect(mainChunk?.code.match(/main-entry/g)).toHaveLength(1);
+            expect(nestedChunk?.code.match(/nested-entry/g)).toHaveLength(1);
         } finally {
             await fixture.cleanup();
         }
@@ -447,6 +449,11 @@ describeIntegration('sourcemap generation', () => {
             const jsFileNames = new Set(jsChunks.map((c) => c.fileName));
             const mapsForJs = maps.filter((m) => jsFileNames.has(m.fileName.replace(/\.map$/, '')));
             expect(mapsForJs.length).toBeGreaterThanOrEqual(1);
+
+            const mainChunk = jsChunks.find((chunk) => chunk.code.includes('main-entry'));
+            const nestedChunk = jsChunks.find((chunk) => chunk.code.includes('nested-entry'));
+            expect(mainChunk?.code.match(/main-entry/g)).toHaveLength(1);
+            expect(nestedChunk?.code.match(/nested-entry/g)).toHaveLength(1);
 
             // Verify every map is valid
             for (const map of mapsForJs) {

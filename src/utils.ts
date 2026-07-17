@@ -19,7 +19,7 @@ const defaultInjectCode: InjectCode = (cssCode, { useStrictCSP, attributes }) =>
     for (const attribute in attributes) {
         const attributeValue =
             typeof attributes[attribute] === 'function' ? attributes[attribute]() : attributes[attribute];
-        attributesInjection += `elementStyle.setAttribute('${attribute}', '${attributeValue}');`;
+        attributesInjection += `elementStyle.setAttribute(${JSON.stringify(attribute)}, ${JSON.stringify(attributeValue)});`;
     }
 
     return `try{if(typeof document != 'undefined'){var elementStyle = document.createElement('style');${
@@ -116,8 +116,18 @@ function injectionCSSCodePlugin({
 }
 
 export function removeLinkStyleSheets(html: string, cssFileName: string): string {
-    const removeCSS = new RegExp(`<link rel=".*"[^>]*?href=".*/?${cssFileName}"[^>]*?>`);
-    return html.replace(removeCSS, '');
+    return html.replace(/<link\b[^>]*>/gi, (linkTag) => {
+        const rel = linkTag.match(/\brel\s*=\s*(["'])(.*?)\1/i)?.[2];
+        const href = linkTag.match(/\bhref\s*=\s*(["'])(.*?)\1/i)?.[2];
+
+        if (!rel || !href) return linkTag;
+
+        const isStyleSheet = rel.split(/\s+/).some((value) => value.toLowerCase() === 'stylesheet');
+        const hrefPath = href.split(/[?#]/, 1)[0];
+        const matchesCss = hrefPath === cssFileName || hrefPath.endsWith(`/${cssFileName}`);
+
+        return isStyleSheet && matchesCss ? '' : linkTag;
+    });
 }
 
 export { warnLog, debugLog } from './utils.log.js';
