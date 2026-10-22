@@ -12,6 +12,8 @@ export type InjectCode = (cssCode: string, options: InjectCodeOptions) => string
 export type InjectCodeFunction = (cssCode: string, options: InjectCodeOptions) => void;
 
 const cssInjectedByJsId = '\0vite/all-css';
+// Variable holding the CSS in the virtual module payload, see injectAndFixMap
+export const virtualModuleCssReference = '__vite_css_injected_by_js__';
 
 const defaultInjectCode: InjectCode = (cssCode, { useStrictCSP, attributes }) => {
     let attributesInjection = '';
@@ -35,6 +37,7 @@ export async function buildCSSInjectionCode({
     injectionCodeFormat = 'iife',
     useStrictCSP,
     attributes,
+    cssCodeReference,
 }: BuildCSSInjectionConfiguration): Promise<OutputChunk | null> {
     let { minify, target } = buildOptions;
 
@@ -49,6 +52,7 @@ export async function buildCSSInjectionCode({
                 injectCodeFunction,
                 useStrictCSP,
                 attributes,
+                cssCodeReference,
             }),
         ],
         build: {
@@ -98,6 +102,7 @@ function injectionCSSCodePlugin({
     injectCodeFunction,
     useStrictCSP,
     attributes,
+    cssCodeReference,
 }: CSSInjectionConfiguration): Plugin {
     return {
         name: 'vite:injection-css-code-plugin',
@@ -108,7 +113,7 @@ function injectionCSSCodePlugin({
         },
         load(id: string) {
             if (id == cssInjectedByJsId) {
-                const cssCode = JSON.stringify(cssToInject.trim());
+                const cssCode = cssCodeReference ?? JSON.stringify(cssToInject.trim());
                 return resolveInjectionCode(cssCode, injectCode, injectCodeFunction, { useStrictCSP, attributes });
             }
         },
@@ -243,12 +248,13 @@ export async function relativeCssInjection(
     buildCssCode: (css: string) => Promise<OutputChunk | null>,
     topExecutionPriorityFlag: boolean,
     buildOptions?: BuildCSSInjectionConfiguration['buildOptions'],
-    isVirtualModuleUsed: boolean = false
+    isVirtualModuleUsed: boolean = false,
+    preRenderCSSCode: (css: string) => string = (css) => css
 ): Promise<void> {
     for (const [jsAssetName, cssAssets] of Object.entries(assetsWithCss)) {
         process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
             debugLog(`[vite-plugin-css-injected-by-js] Relative CSS: ${jsAssetName}: [ ${cssAssets.join(',')} ]`);
-        const assetCss = concatCssAndDeleteFromBundle(bundle, cssAssets);
+        const assetCss = preRenderCSSCode(concatCssAndDeleteFromBundle(bundle, cssAssets));
         const cssInjectionCode = assetCss.length > 0 ? (await buildCssCode(assetCss))?.code : '';
 
         // We have already filtered these chunks to be RenderedChunks
@@ -275,7 +281,8 @@ export async function globalCssInjection(
     jsAssetsFilterFunction: PluginConfiguration['jsAssetsFilterFunction'],
     topExecutionPriorityFlag: boolean,
     buildOptions?: BuildCSSInjectionConfiguration['buildOptions'],
-    isVirtualModuleUsed: boolean = false
+    isVirtualModuleUsed: boolean = false,
+    preRenderCSSCode: (css: string) => string = (css) => css
 ): Promise<void> {
     const jsTargetBundleKeys = getJsTargetBundleKeys(bundle, jsAssetsFilterFunction);
     if (jsTargetBundleKeys.length == 0) {
@@ -286,7 +293,7 @@ export async function globalCssInjection(
 
     process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
         debugLog(`[vite-plugin-css-injected-by-js] Global CSS Assets: [${cssAssets.join(',')}]`);
-    const allCssCode = concatCssAndDeleteFromBundle(bundle, cssAssets);
+    let allCssCode = preRenderCSSCode(concatCssAndDeleteFromBundle(bundle, cssAssets));
     let cssInjectionCode: string = '';
 
     if (allCssCode.length > 0) {
@@ -309,15 +316,15 @@ export async function globalCssInjection(
                 globalCSSCodeEntryCache.clear();
             }
             previousFacadeModuleId = jsAsset.facadeModuleId;
-            globalCSSCodeEntryCache.set(jsAsset.facadeModuleId, cssInjectionCode);
+            globalCSSCodeEntryCache.set(jsAsset.facadeModuleId, { cssInjectionCode, allCssCode });
         }
         if (
             cssInjectionCode == '' &&
             jsAsset.isEntry &&
             jsAsset.facadeModuleId != null &&
-            typeof globalCSSCodeEntryCache.get(jsAsset.facadeModuleId) == 'string'
+            globalCSSCodeEntryCache.has(jsAsset.facadeModuleId)
         ) {
-            cssInjectionCode = globalCSSCodeEntryCache.get(jsAsset.facadeModuleId);
+            ({ cssInjectionCode, allCssCode } = globalCSSCodeEntryCache.get(jsAsset.facadeModuleId));
         }
 
         process.env.VITE_CSS_INJECTED_BY_JS_DEBUG &&
@@ -402,9 +409,12 @@ export function injectAndFixMap(
 
         // 1. Write the payload as a REAL function for syntax highlighting and linting!
         const payloadTemplate = function() {
+            /* Single copy of the CSS, also referenced by the injection code */
+            var __vite_css_injected_by_js__ = '%%RAW_CSS%%';
+
             /* SSR Support: Store raw CSS globally */
             if (typeof globalThis !== 'undefined') {
-                (globalThis as any).__VITE_CSS_RAW__ = ((globalThis as any).__VITE_CSS_RAW__ || '') + '%%RAW_CSS%%';
+                (globalThis as any).__VITE_CSS_RAW__ = ((globalThis as any).__VITE_CSS_RAW__ || '') + __vite_css_injected_by_js__;
             }
 
             /* DOM Injection Support */
