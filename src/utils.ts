@@ -456,8 +456,10 @@ export function injectAndFixMap(
 
         // 2. Serialize the function to a string, and replace our placeholders!
         const payload = `(${payloadTemplate.toString()})();`
-            .replace("'%%RAW_CSS%%'", JSON.stringify(rawCss || ''))
-            .replace('// %%PATCHED_CODE%%', patched);
+            // Transpilers may requote the placeholder, and replacer functions keep `$` patterns of the CSS
+            // from being interpreted
+            .replace(/(['"])%%RAW_CSS%%\1/, () => JSON.stringify(rawCss || ''))
+            .replace('// %%PATCHED_CODE%%', () => patched);
 
         const singleLine = payload.replace(/\n/g, '').replace(/\s{2,}/g, ' ');
 
