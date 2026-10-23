@@ -1,7 +1,7 @@
 {
   "compileOnSave": false,
   "exclude": ["dist", "node_modules"],
-  "include": ["./src"],
+  "include": ["./src", "./client.d.ts"],
   "compilerOptions": {
     "allowSyntheticDefaultImports": true,
     "declaration": true,

@@ -9,11 +9,15 @@
         ".": {
             "types": "./dist/declarations/index.d.ts",
             "import": "./dist/index.js"
+        },
+        "./client": {
+            "types": "./client.d.ts"
         }
     },
     "typings": "dist/declarations/index.d.ts",
     "files": [
-        "dist"
+        "dist",
+        "client.d.ts"
     ],
     "scripts": {
         "test": "vitest",

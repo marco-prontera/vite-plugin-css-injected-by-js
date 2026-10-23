@@ -148,7 +148,7 @@ The plugin ships type declarations for the virtual module. Add it to your `tscon
 ```jsonc
 {
   "compilerOptions": {
-    "types": ["vite-plugin-css-injected-by-js/dist/esm/declarations/client"]
+    "types": ["vite-plugin-css-injected-by-js/client"]
   }
 }
 ```
