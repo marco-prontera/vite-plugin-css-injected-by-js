@@ -13,8 +13,11 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         node-version: [ 20, 22, 24 ]
+        # The lockfile pins one Vite version, so also test each minor the peer range allows.
+        vite-version: [ 'lockfile', '8.1', '8.2', 'latest' ]
 
     steps:
       - name: Checkout
@@ -26,6 +29,8 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
       - run: npm ci
+      - if: matrix.vite-version != 'lockfile'
+        run: npm install --no-save vite@${{ matrix.vite-version }}
       - run: npm run coverage
       - run: npm run ci-test
       - run: npm run test:integration
