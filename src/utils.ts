@@ -69,11 +69,13 @@ export async function buildCSSInjectionCode({
     const _cssChunk = Array.isArray(res) ? res[0] : res;
     if (!('output' in _cssChunk)) return null;
 
-    // Rolldown emits //#region and //#endregion line-comments that reference
-    // internal module IDs.  When the injection code is later collapsed to a
+    // Rolldown emits line comments referencing internal module IDs (`//#region` before 1.2,
+    // `// \0vite/all-css` since). When the injection code is later collapsed to a
     // single line, these // comments swallow all subsequent code on that line,
     // producing invalid JS.  Strip them here so the output is safe to flatten.
-    const code = _cssChunk.output[0].code.replace(/^\s*\/\/#(?:region|endregion).*$/gm, '');
+    // Only those are matched: rolldown already drops user comments,
+    // and minified CSS sits in a multi-line template literal.
+    const code = _cssChunk.output[0].code.replace(/^\s*\/\/(?:#(?:region|endregion)| \\0).*$/gm, '');
 
     return { ..._cssChunk.output[0], code };
 }
