@@ -16,7 +16,15 @@ jobs:
       fail-fast: false
       matrix:
         node-version: [ 20, 22, 24 ]
-        vite-version: [ 'lockfile', '8.1', '8.2', 'latest' ]
+        vite-version: [ 'lockfile' ]
+        # Node 24 only: npm 10 (Node 20, 22) crashes installing Vite >= 8.2 (https://github.com/npm/cli/issues/8261).
+        include:
+          - node-version: 24
+            vite-version: '8.1'
+          - node-version: 24
+            vite-version: '8.2'
+          - node-version: 24
+            vite-version: 'latest'
 
     steps:
       - name: Checkout
