@@ -16,7 +16,6 @@ jobs:
       fail-fast: false
       matrix:
         node-version: [ 20, 22, 24 ]
-        # The lockfile pins one Vite version, so also test each minor the peer range allows.
         vite-version: [ 'lockfile', '8.1', '8.2', 'latest' ]
 
     steps:
