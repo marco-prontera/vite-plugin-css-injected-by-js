@@ -406,6 +406,16 @@ describe('utils', () => {
             expect(chunk.code).not.toContain('document.head.appendChild');
         });
 
+        it('keeps `$` patterns of the CSS in virtual-module payload', () => {
+            const chunk = makeChunk('console.log(1);', 'vm3.js');
+            const bundle: OutputBundle = { 'vm3.js': chunk };
+            const css = ".a::before{content:\"$&$'\"}";
+
+            injectAndFixMap(chunk, 'var css=' + JSON.stringify(css) + ';', css, undefined, true, bundle, true);
+
+            expect(chunk.code.split(JSON.stringify(css))).toHaveLength(3);
+        });
+
         it('wraps virtual-module payload with queue/unlock logic', () => {
             const chunk = makeChunk('console.log(1);', 'vm2.js');
             const bundle: OutputBundle = { 'vm2.js': chunk };

@@ -31,6 +31,7 @@ export interface PluginConfiguration extends BaseOptions {
 
 export interface CSSInjectionConfiguration extends BaseOptions {
     cssToInject: string;
+    cssCodeReference?: string;
 }
 
 export interface BuildCSSInjectionConfiguration extends CSSInjectionConfiguration {

@@ -285,6 +285,10 @@ describeIntegration('fixture templates', () => {
             expect(entryChunk.code).toContain('shadow-next-entry');
             expect(entryChunk.code).toContain('shadow-next-inner');
 
+            // The CSS is embedded once, shared by getRawCSS() and the injection code
+            expect(entryChunk.code).not.toContain('%%RAW_CSS%%');
+            expect(entryChunk.code.split('rgb(220, 230, 240)')).toHaveLength(2);
+
             // The virtual module import should have been resolved — the bundle
             // must contain the Queue
             expect(entryChunk.code).toContain('__VITE_CSS_QUEUE__');
