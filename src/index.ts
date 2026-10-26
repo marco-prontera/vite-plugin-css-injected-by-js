@@ -7,7 +7,7 @@ import {
     relativeCssInjection,
     removeLinkStyleSheets,
     resolveInjectionCode,
-    virtualModuleCssReference,
+    VIRTUAL_MODULE_CSS_KEY,
     warnLog,
 } from './utils.js';
 import type { OutputAsset } from 'rolldown';
@@ -146,7 +146,7 @@ export default function cssInjectedByJsPlugin({
                     buildCSSInjectionCode({
                         buildOptions: config.build,
                         cssToInject,
-                        cssCodeReference: isVirtualModuleUsed ? virtualModuleCssReference : undefined,
+                        cssCodeReference: isVirtualModuleUsed ? VIRTUAL_MODULE_CSS_KEY : undefined,
                         injectCode,
                         injectCodeFunction,
                         injectionCodeFormat,

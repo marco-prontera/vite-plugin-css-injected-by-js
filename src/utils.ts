@@ -12,8 +12,7 @@ export type InjectCode = (cssCode: string, options: InjectCodeOptions) => string
 export type InjectCodeFunction = (cssCode: string, options: InjectCodeOptions) => void;
 
 const cssInjectedByJsId = '\0vite/all-css';
-// Variable holding the CSS in the virtual module payload, see injectAndFixMap
-export const virtualModuleCssReference = '__vite_css_injected_by_js__';
+export const VIRTUAL_MODULE_CSS_KEY = '__vite_css_injected_by_js__';
 
 const defaultInjectCode: InjectCode = (cssCode, { useStrictCSP, attributes }) => {
     let attributesInjection = '';
@@ -409,7 +408,6 @@ export function injectAndFixMap(
 
         // 1. Write the payload as a REAL function for syntax highlighting and linting!
         const payloadTemplate = function() {
-            /* Single copy of the CSS, also referenced by the injection code */
             var __vite_css_injected_by_js__ = '%%RAW_CSS%%';
 
             /* SSR Support: Store raw CSS globally */
