@@ -7,6 +7,7 @@ import {
     relativeCssInjection,
     removeLinkStyleSheets,
     resolveInjectionCode,
+    VIRTUAL_MODULE_CSS_KEY,
     warnLog,
 } from './utils.js';
 import type { OutputAsset } from 'rolldown';
@@ -144,8 +145,8 @@ export default function cssInjectedByJsPlugin({
                 const buildCssCode = (cssToInject: string) =>
                     buildCSSInjectionCode({
                         buildOptions: config.build,
-                        cssToInject:
-                            typeof preRenderCSSCode == 'function' ? preRenderCSSCode(cssToInject) : cssToInject,
+                        cssToInject,
+                        cssCodeReference: isVirtualModuleUsed ? VIRTUAL_MODULE_CSS_KEY : undefined,
                         injectCode,
                         injectCodeFunction,
                         injectionCodeFormat,
@@ -173,7 +174,8 @@ export default function cssInjectedByJsPlugin({
                         buildCssCode,
                         topExecutionPriorityFlag,
                         config.build,
-                        isVirtualModuleUsed
+                        isVirtualModuleUsed,
+                        preRenderCSSCode
                     );
 
                     const consumedCssAssets = Object.values(chunksWithCss).flat();
@@ -200,7 +202,8 @@ export default function cssInjectedByJsPlugin({
                         jsAssetsFilterFunction,
                         topExecutionPriorityFlag,
                         config.build,
-                        isVirtualModuleUsed
+                        isVirtualModuleUsed,
+                        preRenderCSSCode
                     );
                 }
 
