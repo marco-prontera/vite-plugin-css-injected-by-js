@@ -13,19 +13,31 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         node-version: [ 20, 22, 24 ]
+        vite-version: [ 'lockfile' ]
+        # Node 24 only: npm 10 (Node 20, 22) crashes installing Vite >= 8.2 (https://github.com/npm/cli/issues/8261).
+        include:
+          - node-version: 24
+            vite-version: '8.1'
+          - node-version: 24
+            vite-version: '8.2'
+          - node-version: 24
+            vite-version: 'latest'
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
       - run: npm ci
+      - if: matrix.vite-version != 'lockfile'
+        run: npm install --no-save vite@${{ matrix.vite-version }}
       - run: npm run coverage
       - run: npm run ci-test
       - run: npm run test:integration

@@ -173,6 +173,36 @@ describe('utils', () => {
             );
         });
 
+        test('Generate unminified JS that stays valid once collapsed to a single line', async () => {
+            const styleId = `style-unminified-${Date.now()}`;
+            const output = await buildCSSInjectionCode({
+                cssToInject: 'body { color: red; }',
+                attributes: {
+                    id: styleId,
+                },
+                buildOptions: { minify: false, target: 'es2015' },
+            });
+
+            // injectAndFixMap collapses the injection code to one line, as here.
+            const singleLine = (output?.code ?? '').replace(/\n/g, '');
+            expect(() => new Function(singleLine)).not.toThrow();
+
+            const $script = document.createElement('script');
+            $script.textContent = singleLine;
+            document.head.appendChild($script);
+
+            expect(document.head.querySelector(`style#${styleId}`)).not.toBeNull();
+        });
+
+        test('Keep CSS lines starting with // in minified JS', async () => {
+            const output = await buildCSSInjectionCode({
+                cssToInject: 'body {\n  background: url(\n//example.com/a.png);\n}',
+                buildOptions: { minify: true, target: 'es2015' },
+            });
+
+            expect(output?.code).toContain('//example.com/a.png');
+        });
+
         test('Generate JS that applies styles, with a nonce', async () => {
             const styleId = `style-${Date.now()}`;
             const output = await buildCSSInjectionCode({
